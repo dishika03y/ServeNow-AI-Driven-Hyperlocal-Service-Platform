@@ -1,5 +1,13 @@
 from fastapi import FastAPI
-app = FastAPI()
+from app.routes.auth_routes import router as auth_router
+from app.routes.user_routes import router as user_router
+
+app = FastAPI(title="Blue Collar Platform API")
+
+app.include_router(auth_router)
+app.include_router(user_router)
+
+
 @app.get("/")
 def root():
-    return {"fastapi is running"}
+    return {"message": "Server running"}
