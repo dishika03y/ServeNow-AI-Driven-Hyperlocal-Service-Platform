@@ -6,6 +6,9 @@ from jose import jwt, JWTError
 from app.database.db import user_collection
 from app.core.security import SECRET_KEY, ALGORITHM
 
+from app.schemas.user_schemas import UpdateUserSchema
+from app.services.user_service import update_user_profile
+
 
 router = APIRouter(
     prefix="/users",
@@ -60,3 +63,19 @@ def get_profile(current_user=Depends(get_current_user)):
         "city": current_user["city"],
         "pincode": current_user["pincode"]
     }
+
+@router.put("/me", summary="Update logged-in user profile")
+def update_profile(
+    data: UpdateUserSchema,
+    current_user=Depends(get_current_user)
+):
+
+    result = update_user_profile(current_user["phone"], data.dict())
+
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="No data provided for update"
+        )
+
+    return {"message": "Profile updated successfully"}
