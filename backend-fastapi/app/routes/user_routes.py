@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from jose import jwt, JWTError
 
@@ -8,6 +8,7 @@ from app.core.security import SECRET_KEY, ALGORITHM
 
 from app.schemas.user_schemas import UpdateUserSchema
 from app.services.user_service import update_user_profile
+from app.services.request_service import get_user_requests
 
 
 router = APIRouter(
@@ -15,11 +16,12 @@ router = APIRouter(
     tags=["Users"]
 )
 
-# This tells Swagger about Authorization header
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+security = HTTPBearer()
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+
+    token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -33,6 +35,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             )
 
         user = user_collection.find_one({"phone": phone})
+
+        if user and "_id" in user:
+            user["id"] = str(user["_id"])
 
         if user is None:
             raise HTTPException(
@@ -79,3 +84,15 @@ def update_profile(
         )
 
     return {"message": "Profile updated successfully"}
+
+@router.get("/me/requests", summary="Get my service requests")
+def my_requests(current_user=Depends(get_current_user)):
+
+    user_id = current_user["id"]
+
+    requests = get_user_requests(user_id)
+
+    return {
+        "total": len(requests),
+        "data": requests
+    }

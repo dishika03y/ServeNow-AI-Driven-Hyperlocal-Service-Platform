@@ -13,6 +13,10 @@ def create_user(user: RegisterSchema):
     hashed_password = hash_password(user.password)
 
     data = user.model_dump()
+
+    data["role"] = "USER" # Default role for new users
+    data["isActive"] = True # New users are active by default
+    data["isverified"] = False # for workers verification will be done by admin
     data["password"] = hashed_password
     data.pop("confirmPassword", None)
 
