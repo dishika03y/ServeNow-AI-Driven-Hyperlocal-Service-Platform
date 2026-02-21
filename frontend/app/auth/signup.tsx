@@ -25,7 +25,7 @@ export default function SignupScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.brand}>ServeNow</Text>
-        <Text style={styles.subtitle}>AI Hyperlocal Services</Text>
+        <Text style={styles.subtitle}>AI Hyperlocal Services platform</Text>
       </View>
 
       {/* Card */}
