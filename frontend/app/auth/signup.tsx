@@ -7,6 +7,9 @@ export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [city, setCity] = useState('');
   const [error, setError] = useState('');
 
   const handleSignup = () => {
@@ -51,6 +54,23 @@ export default function SignupScreen() {
           onChangeText={setPassword}
           secureTextEntry
         />
+
+        <InputField
+          placeholder="Phone Number"
+          value={phone}
+          onChangeText={setPhone}
+        />
+        <InputField
+          placeholder="Pincode"
+          value={pincode}
+          onChangeText={setPincode}
+        />
+        <InputField
+          placeholder="City"
+          value={city}
+          onChangeText={setCity}
+        />
+
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 

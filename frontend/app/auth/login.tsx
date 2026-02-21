@@ -4,12 +4,12 @@ import { router } from 'expo-router';
 import InputField from '../../components/ui/InputField';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = () => {
-    if (!email || !password) {
+    if (!phone || !password) {
       setError('All fields are required');
       return;
     }
@@ -34,9 +34,9 @@ export default function LoginScreen() {
         <Text style={styles.desc}>Login to find nearby trusted services</Text>
 
         <InputField
-          placeholder="Email or Phone Number"
-          value={email}
-          onChangeText={setEmail}
+          placeholder="Phone Number"
+          value={phone}
+          onChangeText={setPhone}
         />
 
         <InputField
