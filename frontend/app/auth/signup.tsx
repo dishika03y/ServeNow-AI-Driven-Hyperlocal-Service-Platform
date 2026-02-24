@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import InputField from '../../components/ui/InputField';
 
+const BASE_URL = "http://10.188.35.21:8000";
+
 export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -12,26 +14,54 @@ export default function SignupScreen() {
   const [city, setCity] = useState('');
   const [error, setError] = useState('');
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     if (!name || !email || !password) {
       setError('All fields are required');
       return;
     }
 
-    setError('');
-    // after successful signup
-    router.replace('/customer/home');
+    try {
+      setError('');
+
+      const response = await fetch(`${BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          password: password,
+          phone: phone,
+          pincode: pincode,
+          city: city,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.detail || 'Signup failed');
+        return;
+      }
+
+      console.log("Signup Success:", data);
+
+      router.replace('/auth/login');
+
+    } catch (err) {
+      console.log(err);
+      setError('Network error. Check backend.');
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.brand}>ServeNow</Text>
         <Text style={styles.subtitle}>AI Hyperlocal Services platform</Text>
       </View>
 
-      {/* Card */}
       <View style={styles.card}>
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.desc}>Sign up to get started</Text>
@@ -43,7 +73,7 @@ export default function SignupScreen() {
         />
 
         <InputField
-          placeholder="Email or Phone Number"
+          placeholder="Email"
           value={email}
           onChangeText={setEmail}
         />
@@ -60,17 +90,18 @@ export default function SignupScreen() {
           value={phone}
           onChangeText={setPhone}
         />
+
         <InputField
           placeholder="Pincode"
           value={pincode}
           onChangeText={setPincode}
         />
+
         <InputField
           placeholder="City"
           value={city}
           onChangeText={setCity}
         />
-
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 

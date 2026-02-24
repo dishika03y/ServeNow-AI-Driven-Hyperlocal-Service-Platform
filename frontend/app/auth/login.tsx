@@ -3,32 +3,61 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import InputField from '../../components/ui/InputField';
 
+const BASE_URL = "http://10.188.35.21:8000";
+
 export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!phone || !password) {
       setError('All fields are required');
       return;
     }
 
-    setError('');
-    router.replace('/customer/home');
+    try {
+      setError('');
 
+      const response = await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: phone,
+          password: password,
+        }),
+      });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.detail || 'Login failed');
+        return;
+      }
+
+      console.log("Login Success:", data);
+
+      // If backend returns access_token
+      const token = data.access_token;
+      console.log("TOKEN:", token);
+
+      router.replace('/customer/home');
+
+    } catch (err) {
+      console.log(err);
+      setError('Network error. Check backend.');
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.brand}>ServeNow</Text>
         <Text style={styles.subtitle}>AI Hyperlocal Services</Text>
       </View>
 
-      {/* Card */}
       <View style={styles.card}>
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.desc}>Login to find nearby trusted services</Text>
