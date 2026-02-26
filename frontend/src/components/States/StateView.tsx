@@ -1,10 +1,10 @@
 import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
-import { COLORS } from "@/constants/theme";
+import colors  from "@/src/components/constants/colours";
 
 export function LoadingState({ text = "Loading..." }) {
   return (
     <View style={styles.center}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
+      <ActivityIndicator size="large" color={colors.light.primary} />
       <Text style={styles.text}>{text}</Text>
     </View>
   );
@@ -26,6 +26,6 @@ const styles = StyleSheet.create({
   },
   text: {
     marginTop: 10,
-    color: COLORS.muted,
+    color: colors.light.text,
   },
 });

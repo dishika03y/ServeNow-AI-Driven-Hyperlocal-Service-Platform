@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
-import InputField from "../../ui/InputField";
+import InputField from "../../src/components/ui/InputField";
 import API from "@/src/api/api";
 
 export default function SignupScreen() {
