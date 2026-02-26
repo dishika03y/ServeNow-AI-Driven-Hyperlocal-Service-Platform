@@ -12,6 +12,15 @@ export default function Layout() {
       }}
     >
       <Tabs.Screen
+  name="home"
+  options={{
+    title: "Home",
+    tabBarIcon: ({ color, size }) => (
+      <Ionicons name="home-outline" size={size} color={color} />
+    ),
+  }}
+/>
+      <Tabs.Screen
         name="history"
         options={{
           title: 'History',
@@ -39,6 +48,7 @@ export default function Layout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles-outline" size={size} color={color} />,
         }}
       />
+      
     </Tabs>
   );
 }

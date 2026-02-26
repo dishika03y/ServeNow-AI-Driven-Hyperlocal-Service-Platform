@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
-import InputField from '../../components/ui/InputField';
+import InputField from '../../ui/InputField';
+import API from '@/src/api/api';
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
-const BASE_URL = "http://10.188.35.21:8000";
 
 export default function LoginScreen() {
   const [phone, setPhone] = useState('');
@@ -19,36 +20,28 @@ export default function LoginScreen() {
     try {
       setError('');
 
-      const response = await fetch(`${BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phone: phone,
-          password: password,
-        }),
-      });
+      console.log("sending login request")
 
-      const data = await response.json();
+      const response = await API.post("/auth/login",{
+        phone,
+        password,
+      })
 
-      if (!response.ok) {
-        setError(data.detail || 'Login failed');
-        return;
-      }
+      console.log("Login Success:", response.data);
 
-      console.log("Login Success:", data);
+      const token = response.data.access_token
 
-      // If backend returns access_token
-      const token = data.access_token;
-      console.log("TOKEN:", token);
+      await AsyncStorage.setItem("token",token);
+      console.log("Token saved");
 
-      router.replace('/customer/home');
-
-    } catch (err) {
-      console.log(err);
-      setError('Network error. Check backend.');
-    }
+    } catch (err: any) {
+  console.log("FULL ERROR:", err);
+  console.log("STACK:", err?.stack);
+  console.log("RESPONSE:", err?.response);
+  
+  setError("Something crashed after login");
+}
+router.replace("/customer/home");
   };
 
   return (

@@ -1,26 +1,37 @@
-const BASE_URL = 'http://10.188.35.21:8000';
+import axios, { AxiosRequestConfig } from "axios";
+
+
+const BASE_URL = "http://192.168.10.142:8000";
+
+const API = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 export async function apiRequest<T = any>(
   url: string,
-  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE' = 'GET',
-  body?: any
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE" = "GET",
+  data?: any,
+  config?: AxiosRequestConfig
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${url}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  try {
+    const response = await API({
+      url,
+      method,
+      data,
+      ...config,
+    });
 
-  if (!res.ok) {
-    let message = 'Request failed';
-    try {
-      const error = await res.json();
-      message = error.message || message;
-    } catch {}
-    throw new Error(message);
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data?.detail || "Request failed");
+    } else {
+      throw new Error("Network error. Check backend.");
+    }
   }
-
-  return res.json();
 }
+
+export default API;
