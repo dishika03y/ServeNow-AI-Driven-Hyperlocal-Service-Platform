@@ -1,42 +1,64 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
-import InputField from '../../components/ui/InputField';
+import InputField from '../../src/components/ui/InputField';
+import API from '@/src/api/api';
+import AsyncStorage from "@react-native-async-storage/async-storage"
+
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    if (!email || !password) {
+  const handleLogin = async () => {
+    if (!phone || !password) {
       setError('All fields are required');
       return;
     }
 
-    setError('');
-    router.replace('/customer/home');
+    try {
+      setError('');
 
+      console.log("sending login request")
 
+      const response = await API.post("/auth/login",{
+        phone,
+        password,
+      })
+
+      console.log("Login Success:", response.data);
+
+      const token = response.data.access_token
+
+      await AsyncStorage.setItem("token",token);
+      console.log("Token saved");
+
+    } catch (err: any) {
+  console.log("FULL ERROR:", err);
+  console.log("STACK:", err?.stack);
+  console.log("RESPONSE:", err?.response);
+  
+  setError("Something crashed after login");
+}
+router.replace("/customer/home");
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.brand}>ServeNow</Text>
         <Text style={styles.subtitle}>AI Hyperlocal Services</Text>
       </View>
 
-      {/* Card */}
       <View style={styles.card}>
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.desc}>Login to find nearby trusted services</Text>
 
         <InputField
-          placeholder="Email or Phone Number"
-          value={email}
-          onChangeText={setEmail}
+          placeholder="Phone Number"
+          value={phone}
+          onChangeText={setPhone}
         />
 
         <InputField
