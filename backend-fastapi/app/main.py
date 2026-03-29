@@ -4,10 +4,20 @@ from app.routes.user_routes import router as user_router
 from app.routes.worker_routes import router as worker_router
 from app.routes.admin_routes import router as admin_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(title="Blue Collar Platform API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router)
 app.include_router(user_router)
