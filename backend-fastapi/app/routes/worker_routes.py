@@ -1,5 +1,3 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
-from bson import ObjectId
 
 from app.schemas.workers_schemas import WorkerApplySchema
 from app.services.worker_service import create_worker_application
@@ -13,6 +11,9 @@ from app.services.ocr_service import extract_text_from_image
 from app.services.aadhar_parser import parse_aadhaar_text
 
 from app.services.face_service import compare_faces
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
+from bson import ObjectId
+from datetime import datetime
 
 router = APIRouter(
     prefix="/workers",
@@ -22,56 +23,71 @@ router = APIRouter(
 
 @router.post("/apply")
 def apply_as_worker(
-    data: WorkerApplySchema,
+    data: WorkerApplySchema, 
     current_user=Depends(get_current_user)
 ):
-
     if current_user["role"] != "USER":
-        raise HTTPException(status_code=403, detail="Not allowed")
+        raise HTTPException(status_code=403, detail="Already a worker or admin")
 
-    result = create_worker_application(current_user, data.model_dump())
+    # 1. Convert Pydantic model to Dict
+    worker_data = data.model_dump()
 
+    # 2. Format for MongoDB Geo-Spatial indexing
+    # We remove the flat lat/long and create the Point object
+    worker_data["location"] = {
+        "type": "Point",
+        "coordinates": [data.longitude, data.latitude] # Longitude first for MongoDB
+    }
+    
+    # 3. Add internal tracking fields
+    worker_data["status"] = "PENDING"
+    worker_data["verificationStage"] = "BASIC_DETAILS_SUBMITTED"
+    worker_data["isLive"] = False
+    worker_data["createdAt"] = datetime.now()
+
+    # 4. Save to Database
+    result = create_worker_application(current_user, worker_data)
+    
     if not result:
-        raise HTTPException(
-            status_code=400,
-            detail="You have already applied"
-        )
+        raise HTTPException(status_code=400, detail="Application already exists")
 
     return {
-        "message": "Worker application submitted",
+        "message": "Profile created successfully. Next step: Upload Documents.", 
         "status": "PENDING"
     }
-
 @router.post("/upload-documents")
 def upload_documents(
     aadhaar_front: UploadFile = File(...),
     aadhaar_back: UploadFile = File(...),
     selfie: UploadFile = File(...),
+    portfolio_1: UploadFile = File(None), # Optional work photos
+    portfolio_2: UploadFile = File(None),
     current_user=Depends(get_current_user)
 ):
-
     worker = worker_collection.find_one({"userId": current_user["_id"]})
-
     if not worker:
-        raise HTTPException(status_code=404, detail="Worker not found")
+        raise HTTPException(404, "Application not found")
 
-    # Upload images
-    aadhaar_front_url = upload_to_cloudinary(aadhaar_front, "workers/aadhaar/front")
-    aadhaar_back_url = upload_to_cloudinary(aadhaar_back, "workers/aadhaar/back")
-    selfie_url = upload_to_cloudinary(selfie, "workers/selfie")
-
-    documents = {
-        "aadhaarFront": aadhaar_front_url,
-        "aadhaarBack": aadhaar_back_url,
-        "selfieImage": selfie_url
+    # Upload core IDs
+    docs = {
+        "aadhaarFront": upload_to_cloudinary(aadhaar_front, "workers/id"),
+        "aadhaarBack": upload_to_cloudinary(aadhaar_back, "workers/id"),
+        "selfieImage": upload_to_cloudinary(selfie, "workers/selfie"),
+        "portfolio": []
     }
 
-    update_worker_documents(worker["_id"], documents)
+    # Upload Portfolio images if provided
+    for p in [portfolio_1, portfolio_2]:
+        if p:
+            url = upload_to_cloudinary(p, "workers/portfolio")
+            docs["portfolio"].append(url)
 
-    return {
-        "message": "Documents uploaded",
-        "documents": documents
-    }
+    worker_collection.update_one(
+        {"_id": worker["_id"]},
+        {"$set": {"documents": docs, "verificationStage": "DOCUMENTS_UPLOADED"}}
+    )
+
+    return {"message": "Documents and Portfolio uploaded successfully"}
 
 @router.post("/verify-aadhaar")
 def verify_aadhaar(current_user=Depends(get_current_user)):
@@ -167,40 +183,51 @@ def get_verification_status(current_user=Depends(get_current_user)):
 
 @router.post("/final-verify")
 def final_verify(current_user=Depends(get_current_user)):
-
-    worker = worker_collection.find_one(
-        {"userId": current_user["_id"]}
-    )
-
-    if not worker:
-        raise HTTPException(404, "Worker not found")
-
+    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    
     aadhaar_data = worker.get("aadhaarData")
     face_data = worker.get("faceMatch")
 
     if not aadhaar_data or not face_data:
-        raise HTTPException(400, "Complete previous steps first")
+        raise HTTPException(400, "Incomplete AI verification steps")
 
-    aadhaar_valid = aadhaar_data.get("aadhaarNumber") is not None
+    # Logic: Robust verification
+    num = str(aadhaar_data.get("aadhaarNumber", ""))
+    is_aadhaar_pattern_valid = len(num) == 12 and num.isdigit()
+    
     face_score = face_data.get("score", 0)
 
-    if aadhaar_valid and face_score >= 0.6:
-        status = "AUTO_APPROVED"
+    # Threshold Logic
+    if is_aadhaar_pattern_valid and face_score >= 0.8:
+        internal_status = "HIGH_CONFIDENCE_MATCH"
+    elif is_aadhaar_pattern_valid and face_score >= 0.5:
+        internal_status = "MANUAL_CHECK_REQUIRED"
     else:
-        status = "MANUAL_REVIEW"
+        internal_status = "POTENTIAL_FRAUD_FLAG"
 
     worker_collection.update_one(
         {"_id": worker["_id"]},
         {
             "$set": {
-                "verificationStatus": status,
-                "status": "PENDING_APPROVAL"
+                "internalVerificationScore": internal_status,
+                "status": "WAITING_FOR_ADMIN", # Worker cannot go live yet
+                "verificationStage": "COMPLETED_AWAITING_REVIEW"
             }
         }
     )
 
     return {
-        "verificationStatus": status,
-        "faceScore": face_score,
-        "aadhaarValid": aadhaar_valid
+        "message": "Verification submitted for final review",
+        "internal_status": internal_status
     }
+
+@router.delete("/reset-application")
+def reset_application(current_user=Depends(get_current_user)):
+    # Allow user to delete their pending application to try again
+    result = worker_collection.delete_one({
+        "userId": current_user["_id"], 
+        "status": {"$ne": "APPROVED"} # Cannot delete if already approved
+    })
+    if result.deleted_count == 0:
+        raise HTTPException(400, "Cannot reset application at this stage")
+    return {"message": "Application reset. You can apply again."}

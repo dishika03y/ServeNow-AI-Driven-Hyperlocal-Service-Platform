@@ -35,6 +35,6 @@ def authenticate_user(phone: str, password: str):
     if not verify_password(password, user["password"]):
         return None
 
-    token = create_access_token({"sub": user["phone"], "role": "USER"})
+    token = create_access_token({"sub": user["phone"], "role": user.get("role", "USER")})
 
     return token

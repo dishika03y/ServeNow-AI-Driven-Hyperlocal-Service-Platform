@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException
 from app.database.db import worker_collection
+from app.database.db import user_collection
 from bson import ObjectId
+from fastapi import APIRouter, HTTPException
+from datetime import datetime
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -39,16 +41,30 @@ def get_worker(worker_id: str):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid ID format")
 
+# In admin_routes.py
 @router.post("/approve/{worker_id}")
 def approve_worker(worker_id: str):
-    # Logic remains the same, but ensure we return a clean dict if needed
-    result = worker_collection.update_one(
+    # 1. Check if worker exists and has completed AI steps
+    worker = worker_collection.find_one({"_id": ObjectId(worker_id)})
+    if not worker:
+        raise HTTPException(404, "Worker not found")
+    
+    if worker.get("verificationStage") != "COMPLETED_AWAITING_REVIEW":
+        raise HTTPException(400, "Worker has not finished AI verification yet")
+
+    # 2. Update Worker to Live
+    worker_collection.update_one(
         {"_id": ObjectId(worker_id)},
-        {"$set": {"status": "APPROVED", "verificationStatus": "ADMIN_APPROVED"}}
+        {"$set": {"status": "APPROVED", "isLive": True, "joinedAt": datetime.now()}}
     )
-    if result.modified_count == 0:
-         raise HTTPException(status_code=404, detail="Worker not found")
-    return {"message": "Worker approved successfully"}
+
+    # 3. Promote User Role
+    user_collection.update_one(
+        {"_id": ObjectId(worker["userId"])},
+        {"$set": {"role": "WORKER"}}
+    )
+
+    return {"message": "Worker is now officially verified and live"}
 
 @router.post("/reject/{worker_id}")
 def reject_worker(worker_id: str):
