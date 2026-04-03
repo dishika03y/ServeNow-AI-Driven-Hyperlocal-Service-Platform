@@ -9,6 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
 
+from app.routes.service_routes import router as service_router
+from app.routes.job_routes import router as job_router
+
 app = FastAPI(title="Blue Collar Platform API")
 
 app.add_middleware(
@@ -24,6 +27,8 @@ app.include_router(user_router)
 app.include_router(worker_router)
 app.include_router(admin_router)
 
+app.include_router(service_router, prefix="/services", tags=["Services"])
+app.include_router(job_router, prefix="/jobs", tags=["Jobs"])
 
 @app.get("/")
 def root():
