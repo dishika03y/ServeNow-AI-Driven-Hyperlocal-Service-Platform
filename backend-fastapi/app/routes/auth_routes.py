@@ -28,3 +28,11 @@ def login(data: LoginSchema):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     return {"access_token": token, "token_type": "bearer"}
+
+@router.post("/logout", status_code=200)
+def logout():
+    """
+    Endpoint to trigger logout. 
+    In JWT, the client handles the actual logout by deleting the token.
+    """
+    return {"message": "Successfully logged out"}
