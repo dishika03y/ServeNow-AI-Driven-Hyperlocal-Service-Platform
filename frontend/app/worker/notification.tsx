@@ -1,25 +1,58 @@
 // app/worker/notifications.tsx
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 
-const dummyNotifications = [
-  { id: '1', message: 'New booking received from John Doe' },
-  { id: '2', message: 'Booking #123 has been canceled' },
-  { id: '3', message: 'Your payout is ready' },
-];
+type Notification = {
+  id: string;
+  message: string;
+};
+
+// Replace with your backend URL
+const BASE_URL = 'https://your-backend.com/api';
 
 export default function Notifications() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${BASE_URL}/workers/notifications`); // Add this endpoint in backend
+      setNotifications(res.data || []);
+    } catch (error) {
+      console.log(error);
+      Alert.alert('Error', 'Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#00D68F" />
+        <Text style={{ color: '#334155', marginTop: 10 }}>Loading notifications...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Notifications</Text>
-
       <FlatList
-        data={dummyNotifications}
+        data={notifications}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.notificationCard}>
             <Text style={styles.message}>{item.message}</Text>
           </View>
         )}
+        ListEmptyComponent={<Text style={{ color: '#64748B', textAlign: 'center', marginTop: 20 }}>No notifications yet.</Text>}
       />
     </View>
   );
