@@ -1,17 +1,43 @@
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
 import InputField from "../../src/components/ui/InputField";
-import API from "@/src/api/api";
+import { apiRequest } from "@/src/api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    router.replace("/customer/home");
+    if (!phone || !password) {
+      setError("Please enter phone and password");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiRequest("/auth/login", "POST", {
+        phone: phone,
+        password: password,
+      });
+      if (data.access_token) {
+        await AsyncStorage.setItem("userToken", data.access_token);
+        router.replace("/home");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,8 +55,8 @@ export default function LoginScreen() {
           placeholder="Phone Number"
           value={phone}
           onChangeText={setPhone}
+          keyboardType="phone-pad"
         />
-
         <InputField
           placeholder="Password"
           value={password}
@@ -40,8 +66,16 @@ export default function LoginScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("/auth/signup")}>
@@ -59,35 +93,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
   },
-  header: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  brand: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#0A2540",
-  },
-  subtitle: {
-    color: "#64748B",
-    marginTop: 4,
-  },
+  header: { alignItems: "center", marginBottom: 20 },
+  brand: { fontSize: 34, fontWeight: "800", color: "#0A2540" },
+  subtitle: { color: "#64748B", marginTop: 4 },
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 24,
     elevation: 6,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#0A2540",
-    marginBottom: 6,
-  },
-  desc: {
-    color: "#64748B",
-    marginBottom: 20,
-  },
+  title: { fontSize: 22, fontWeight: "700", color: "#0A2540", marginBottom: 6 },
+  desc: { color: "#64748B", marginBottom: 20 },
   button: {
     backgroundColor: "#0A2540",
     padding: 16,
@@ -106,8 +122,5 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontWeight: "500",
   },
-  error: {
-    color: "#DC2626",
-    marginBottom: 8,
-  },
+  error: { color: "#DC2626", marginBottom: 8 },
 });
