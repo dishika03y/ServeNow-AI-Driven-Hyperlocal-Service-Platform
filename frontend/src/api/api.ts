@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
-const BASE_URL = "http://192.168.1.10:8000";
+const BASE_URL = "https://serservenow-backend.onrender.com";
 
 const API = axios.create({
   baseURL: BASE_URL,

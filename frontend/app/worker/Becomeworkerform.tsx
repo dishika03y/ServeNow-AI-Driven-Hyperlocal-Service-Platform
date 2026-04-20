@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { apiRequest } from '@/src/api/axios';
+import { apiRequest } from '../../src/api/api';
 
 const NAVY        = '#0B2239';
 const NAVY_MID    = '#163552';

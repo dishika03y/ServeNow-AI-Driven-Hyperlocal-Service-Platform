@@ -1,4 +1,8 @@
 import { Stack } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import { View, ActivityIndicator } from "react-native";
+import { useSegments, useRouter } from "expo-router";
 
 export default function RootLayout() {
   const segments = useSegments();
