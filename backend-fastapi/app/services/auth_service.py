@@ -1,6 +1,10 @@
 from app.database.db import user_collection
-from app.core.security import hash_password, verify_password
-from app.core.security import create_access_token
+from app.core.security import (
+    hash_password, 
+    verify_password, 
+    create_access_token, 
+    create_refresh_token 
+)
 from app.schemas.auth_schemas import RegisterSchema
 
 
@@ -26,15 +30,11 @@ def create_user(user: RegisterSchema):
 
 
 def authenticate_user(phone: str, password: str):
-
     user = user_collection.find_one({"phone": phone})
-
     if not user:
         return None
 
     if not verify_password(password, user["password"]):
         return None
 
-    token = create_access_token({"sub": user["phone"], "role": user.get("role", "USER")})
-
-    return token
+    return user

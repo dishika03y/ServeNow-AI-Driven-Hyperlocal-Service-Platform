@@ -17,7 +17,8 @@ from datetime import datetime
 
 router = APIRouter(
     prefix="/workers",
-    tags=["Workers"]
+    tags=["Workers"],
+    redirect_slashes=False
 )
 
 
@@ -176,8 +177,8 @@ def get_verification_status(current_user=Depends(get_current_user)):
     
     return {
         "stage": worker.get("verificationStage", "NOT_STARTED"),
-        "faceMatch": worker.get("faceMatch"),
-        "aadhaarData": worker.get("aadhaarData"),
+        "faceMatch": worker.get("faceMatch", None),
+        "aadhaarData": worker.get("aadhaarData", None),
         "status": worker.get("status")
     }
 
@@ -231,3 +232,16 @@ def reset_application(current_user=Depends(get_current_user)):
     if result.deleted_count == 0:
         raise HTTPException(400, "Cannot reset application at this stage")
     return {"message": "Application reset. You can apply again."}
+
+@router.get("/me")
+def get_worker_profile(current_user=Depends(get_current_user)):
+    worker = worker_collection.find_one({"userId": current_user["_id"]})
+
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    worker["_id"] = str(worker["_id"])
+    worker["userId"] = str(worker["userId"])
+
+    return worker
+    

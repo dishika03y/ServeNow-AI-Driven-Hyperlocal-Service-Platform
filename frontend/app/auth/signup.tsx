@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useState } from "react";
 import { router } from "expo-router";
@@ -21,35 +22,53 @@ export default function SignupScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
- const handleSignup = async () => {
-   if (!fullName || !phone || !password || !city || !pincode) {
-     setError("Please fill in all required fields");
-     return;
-   }
+  const handleSignup = async () => {
+    if (!fullName || !phone || !password || !city || !pincode) {
+      setError("Please fill in all required fields");
+      return;
+    }
 
-   setLoading(true);
-   setError("");
+    setLoading(true);
+    setError("");
 
-   try {
-     // MATCHING YOUR DOCS: /auth/register and camelCase keys
-     await apiRequest("/auth/register", "POST", {
-       fullName: fullName, // Must be fullName, not full_name
-       phone: phone,
-       password: password,
-       email: email,
-       city: city,
-       pincode: pincode,
-     });
+    try {
+      await apiRequest("/auth/register", "POST", {
+        fullName: fullName, // Change 'full_name' to 'fullName'
+        phone: phone,
+        email: email,
+        password: password,
+        city: city,
+        pincode: pincode,
+      });
 
-     alert("Registration successful!");
-     router.replace("/auth/login");
-   } catch (err: any) {
-     // If you get a 422 here, check the phone number format
-     setError(err.message);
-   } finally {
-     setLoading(false);
-   }
- };
+      alert("Registration successful!");
+      router.replace("/auth/login");
+    } catch (err: any) {
+      let friendlyMessage = "Something went wrong. Please try again.";
+
+      if (err.response) {
+        const status = err.response.status;
+        const detail = err.response.data?.detail;
+
+        if (status === 422) {
+          friendlyMessage =
+            "Please check your details. Some fields are missing or incorrect.";
+        } else if (status === 400) {
+          friendlyMessage = detail || "This account already exists.";
+        } else if (status === 401) {
+          friendlyMessage = "Incorrect phone or password.";
+        }
+      }
+
+      // Show a clean Alert to the user
+      Alert.alert("Signup Failed", friendlyMessage);
+
+      // Keep the "ugly" error only in your terminal for debugging
+      if (__DEV__) {
+        console.log("Signup Error Detail:", JSON.stringify(err.response?.data));
+      }
+    }
+  };
 
   return (
     <ScrollView

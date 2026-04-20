@@ -13,7 +13,6 @@ export default function Index() {
     const token = await AsyncStorage.getItem('access_token');
     const user = await AsyncStorage.getItem('userProfile');
 
-    // ❌ Not logged in
     if (!token || !user) {
       setRoute('/auth/login');
       return;

@@ -1,96 +1,63 @@
-from app.database.db import worker_collection
-from app.database.db import user_collection
-from bson import ObjectId
+# app/routes/auth.py
 from fastapi import APIRouter, HTTPException
-from datetime import datetime
+from app.schemas.auth_schemas import RegisterSchema, LoginSchema
+from app.services.auth_service import (create_user, authenticate_user)
+from app.core.security import (
+    create_access_token, 
+    create_refresh_token,
+    verify_refresh_token
+)
+from pydantic import BaseModel
 
-router = APIRouter(prefix="/admin", tags=["Admin"])
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
-def format_mongo_doc(doc):
-    """
-    Helper to convert ALL ObjectIds in a document to strings
-    so FastAPI can serialize them to JSON.
-    """
-    if not doc:
-        return None
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+@router.post("/register")
+def register(user: RegisterSchema):
+    result = create_user(user)
+    if not result:
+        raise HTTPException(status_code=400, detail="User already exists")
+    return {"message": "User registered successfully"}
+
+
+@router.post("/login")
+def login(data: LoginSchema):
+    user = authenticate_user(data.phone, data.password)
     
-    # Convert the primary _id
-    doc["_id"] = str(doc["_id"])
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # Generate both tokens HERE (only once)
+    access_token = create_access_token(data={"sub": str(user["phone"]), "role": user.get("role", "USER")})
+    refresh_token = create_refresh_token(data={"sub": str(user["phone"])})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
+
+@router.post("/refresh")
+def refresh(data: RefreshRequest):
+    user_id = verify_refresh_token(data.refresh_token)
     
-    # Convert any other ObjectIds (like userId)
-    for key, value in doc.items():
-        if isinstance(value, ObjectId):
-            doc[key] = str(value)
-            
-    return doc
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
-@router.get("/workers")
-def get_all_workers():
-    # Fetch all and format each one
-    workers = list(worker_collection.find())
-    return [format_mongo_doc(w) for w in workers]
-
-@router.get("/worker/{worker_id}")
-def get_worker(worker_id: str):
-    try:
-        worker = worker_collection.find_one({"_id": ObjectId(worker_id)})
-        if not worker:
-            raise HTTPException(status_code=404, detail="Worker not found")
-        
-        return format_mongo_doc(worker)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
-
-# In admin_routes.py
-@router.post("/approve/{worker_id}")
-def approve_worker(worker_id: str):
-    # 1. Check if worker exists and has completed AI steps
-    worker = worker_collection.find_one({"_id": ObjectId(worker_id)})
-    if not worker:
-        raise HTTPException(404, "Worker not found")
+    # Generate NEW access token using the phone number from refresh token
+    new_access_token = create_access_token(data={"sub": user_id})
     
-    if worker.get("verificationStage") != "COMPLETED_AWAITING_REVIEW":
-        raise HTTPException(400, "Worker has not finished AI verification yet")
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer"
+    }
 
-    # 2. Update Worker to Live
-    worker_collection.update_one(
-        {"_id": ObjectId(worker_id)},
-        {"$set": {"status": "APPROVED", "isLive": True, "joinedAt": datetime.now()}}
-    )
 
-    # 3. Promote User Role
-    user_collection.update_one(
-        {"_id": ObjectId(worker["userId"])},
-        {"$set": {"role": "WORKER"}}
-    )
-
-    return {"message": "Worker is now officially verified and live"}
-
-@router.post("/reject/{worker_id}")
-def reject_worker(worker_id: str):
-    try:
-        if not ObjectId.is_valid(worker_id):
-            raise HTTPException(status_code=400, detail="Invalid ID")
-
-        worker = worker_collection.find_one({"_id": ObjectId(worker_id)})
-
-        if not worker:
-            raise HTTPException(status_code=404, detail="Worker not found")
-
-        if worker.get("status") == "APPROVED":
-            raise HTTPException(status_code=400, detail="Already approved")
-
-        worker_collection.update_one(
-            {"_id": ObjectId(worker_id)},
-            {
-                "$set": {
-                    "status": "REJECTED",
-                    "verificationStatus": "ADMIN_REJECTED"
-                }
-            }
-        )
-
-        return {"message": "Worker rejected"}
-
-    except Exception as e:
-        return {"error": str(e)}
+@router.post("/logout", status_code=200)
+def logout():
+    return {"message": "Successfully logged out"}

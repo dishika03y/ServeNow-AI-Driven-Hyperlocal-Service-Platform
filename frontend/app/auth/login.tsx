@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import InputField from "../../src/components/ui/InputField";
 import { apiRequest } from "@/src/api/axios";
@@ -18,6 +18,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+<<<<<<< HEAD
   if (!phone || !password) {
     setError("Please enter phone and password");
     return;
@@ -52,6 +53,49 @@ export default function LoginScreen() {
       } else {
         router.replace("/customer/Customerdashboard");
       }
+=======
+    if (!phone || !password) {
+      setError("Please enter phone and password");
+      return;
+    }
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await apiRequest("/auth/login", "POST", {
+        phone: phone,
+        password: password,
+      });
+
+      // CHANGE THIS: Only require the access_token to proceed
+      if (data && data.access_token) {
+        await AsyncStorage.setItem("access_token", data.access_token);
+
+        // Only save the refresh_token if it exists in the response
+        if (data.refresh_token) {
+          await AsyncStorage.setItem("refresh_token", data.refresh_token);
+        }
+
+        router.replace("/(tabs)/home");
+      } else {
+        setError("Login failed: Server response was incomplete.");
+      }
+    } catch (err: any) {
+      // Show the actual backend error message instead of 'undefined'
+      const backendMessage = err.response?.data?.detail;
+      const message =
+        typeof backendMessage === "string"
+          ? backendMessage
+          : "Invalid phone or password";
+
+      setError(message);
+
+      if (__DEV__) {
+        console.log("Login Error Detail:", err.response?.data);
+      }
+    } finally {
+      setLoading(false);
+>>>>>>> 6304e3b (changes on dashboard)
     }
 
   } catch (err: any) {
