@@ -9,7 +9,7 @@ import {
 import { useState } from "react";
 import { router } from "expo-router";
 import InputField from "../../src/components/ui/InputField";
-import { apiRequest } from "@/src/api/api";
+import { apiRequest } from "@/src/api/axios";
 
 export default function SignupScreen() {
   const [fullName, setFullName] = useState("");

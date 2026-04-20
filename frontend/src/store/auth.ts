@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Role = "customer" | "worker" | null;
+export type Role = "customer" | "worker" | "admin" | null;
 
 interface AuthState {
   token: string | null;

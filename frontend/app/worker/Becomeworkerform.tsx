@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import API, { apiRequest } from '@/src/api/api'; // adjust path
+import { apiRequest } from '@/src/api/axios';
 
 const NAVY        = '#0B2239';
 const NAVY_MID    = '#163552';
@@ -70,6 +70,10 @@ export default function BecomeWorkerForm() {
   };
 
   const handleSubmit = async () => {
+    if (!isReady) {
+      return Alert.alert('Incomplete form', 'Please fill all required fields before submitting.');
+    }
+
     if (selectedServices.length === 0) return Alert.alert('Missing Info', 'Select at least one service.');
     if (!experience) return Alert.alert('Missing Info', 'Select your experience.');
     if (!city) return Alert.alert('Missing Info', 'Select your city.');
@@ -209,7 +213,12 @@ export default function BecomeWorkerForm() {
       </View>
 
       {/* Submit */}
-      <TouchableOpacity style={[styles.submitBtn, !isReady && styles.submitBtnDisabled]} onPress={handleSubmit} activeOpacity={isReady ? 0.85 : 1}>
+      <TouchableOpacity
+        style={[styles.submitBtn, !isReady && styles.submitBtnDisabled]}
+        onPress={handleSubmit}
+        activeOpacity={isReady ? 0.85 : 1}
+        disabled={!isReady}
+      >
         <Text style={[styles.submitText, !isReady && { color: MUTED }]}>Submit Profile →</Text>
       </TouchableOpacity>
     </ScrollView>

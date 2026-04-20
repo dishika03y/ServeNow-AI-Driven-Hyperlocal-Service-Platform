@@ -8,7 +8,7 @@ import {
 import { useState } from "react";
 import { router } from "expo-router";
 import InputField from "../../src/components/ui/InputField";
-import { apiRequest } from "@/src/api/api";
+import { apiRequest } from "@/src/api/axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
@@ -18,27 +18,48 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!phone || !password) {
-      setError("Please enter phone and password");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const data = await apiRequest("/auth/login", "POST", {
-        phone: phone,
-        password: password,
-      });
-      if (data.access_token) {
-        await AsyncStorage.setItem("userToken", data.access_token);
-        router.replace("/home");
+  if (!phone || !password) {
+    setError("Please enter phone and password");
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+
+  try {
+    const data = await apiRequest("/auth/login", "POST", {
+      phone: phone,
+      password: password,
+    });
+
+    console.log("LOGIN RESPONSE:", data); // debug
+
+    if (data.access_token) {
+      // ✅ Save correct keys
+      await AsyncStorage.setItem("access_token", data.access_token);
+
+      const userData = {
+        role: data.role || "customer",
+      };
+
+      await AsyncStorage.setItem("userProfile", JSON.stringify(userData));
+
+      // ✅ Role-based redirect
+      if (userData.role === "admin") {
+        router.replace("/admin/dashboard");
+      } else if (userData.role === "worker") {
+        router.replace("/worker");
+      } else {
+        router.replace("/customer/Customerdashboard");
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
     }
-  };
+
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <View style={styles.container}>
