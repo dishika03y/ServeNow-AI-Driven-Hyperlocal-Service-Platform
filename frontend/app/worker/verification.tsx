@@ -67,7 +67,9 @@ export default function Verification() {
 
     try {
       await apiRequest("/workers/upload-documents", "POST", formData, {
-        "Content-Type": "multipart/form-data",
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
       Alert.alert("Success", "Documents uploaded! Pending Admin Verification.");
       router.replace("/worker/pending-status");
