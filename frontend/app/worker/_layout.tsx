@@ -1,11 +1,5 @@
 import { Stack } from "expo-router";
 
-export default function WorkerLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    />
-  );
+export default function CustomerLayout() {
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

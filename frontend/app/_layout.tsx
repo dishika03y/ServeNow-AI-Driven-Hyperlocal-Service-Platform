@@ -1,40 +1,48 @@
-import { Stack } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+// app/_layout.tsx
+import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
-import { useSegments, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuthStore, Role } from "../src/store/useAuthStore"; // Ensure Role is exported
 
 export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
+  const { isAuthenticated, login } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const checkUserAuth = async () => {
+    const initializeAuth = async () => {
       try {
         const token = await AsyncStorage.getItem("access_token");
-        const inAuthGroup = segments[0] === "auth";
+        const userProfile = await AsyncStorage.getItem("userProfile");
 
-        if (!token) {
-          // Only block if NOT inside auth
-          if (!inAuthGroup) {
-            router.replace("/auth/login");
-          }
-        } else {
-          // If logged in, prevent going back to auth screens
-          if (inAuthGroup) {
-            router.replace("/(tabs)/home");
-          }
+        if (token && userProfile) {
+          const parsedUser = JSON.parse(userProfile);
+          // Hydrate store with actual role from storage
+          login(token, parsedUser.role as Role);
         }
-      } catch (error) {
-        console.error("Auth Check Error:", error);
+      } catch (e) {
+        console.error("Auth Hydration Error:", e);
       } finally {
         setIsReady(true);
       }
     };
+    initializeAuth();
+  }, []);
 
-    checkUserAuth();
-  }, [segments]);
+  useEffect(() => {
+    if (!isReady) return;
+
+    const inAuthGroup = segments[0] === "auth";
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace("/auth/login");
+    } else if (isAuthenticated && inAuthGroup) {
+      // You could route them based on role here if needed
+      router.replace("/(tabs)/home");
+    }
+  }, [isAuthenticated, segments, isReady]);
 
   if (!isReady) {
     return (
@@ -51,13 +59,5 @@ export default function RootLayout() {
     );
   }
 
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* REMOVED: "auth", "(tabs)", etc. 
-          Expo Router automatically detects these folders. 
-          Listing them here again causes the 'extraneous' warning.
-      */}
-      <Stack.Screen name="index" />
-    </Stack>
-  );
+  return <Slot />;
 }
