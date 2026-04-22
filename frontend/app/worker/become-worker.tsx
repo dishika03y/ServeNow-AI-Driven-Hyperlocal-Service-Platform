@@ -112,7 +112,6 @@
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        {/* Top Bar */}
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backIcon}>‹</Text>
@@ -121,14 +120,12 @@
           <View style={{ width: 36 }} />
         </View>
 
-        {/* Hero */}
         <View style={styles.hero}>
           <Text style={styles.heroEmoji}>🛠️</Text>
           <Text style={styles.heroTitle}>Become a Worker</Text>
           <Text style={styles.heroSub}>Fill details below and start earning</Text>
         </View>
 
-        {/* Services */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>SERVICES YOU OFFER</Text>
           <Text style={styles.sectionNote}>Select all that apply</Text>
@@ -149,7 +146,6 @@
           })}
         </View>
 
-        {/* Experience */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>YEARS OF EXPERIENCE</Text>
         </View>
@@ -164,7 +160,6 @@
           })}
         </View>
 
-        {/* Availability */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>AVAILABILITY</Text>
         </View>
@@ -179,7 +174,6 @@
           })}
         </View>
 
-        {/* City */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>YOUR CITY</Text>
         </View>
@@ -194,7 +188,6 @@
           })}
         </View>
 
-        {/* Contact & Rate */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>CONTACT & RATE</Text>
         </View>
@@ -204,7 +197,6 @@
           <InputField label="Hourly Rate (₹)" placeholder="350" value={hourlyRate} onChangeText={setHourlyRate} keyboardType="numeric" emoji="💰" />
         </View>
 
-        {/* Bio */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>SHORT BIO</Text>
         </View>
@@ -212,7 +204,6 @@
           <TextInput style={styles.bioInput} placeholder="Your skills & experience..." placeholderTextColor={MUTED} value={bio} onChangeText={setBio} multiline numberOfLines={4} />
         </View>
 
-        {/* Submit */}
         <TouchableOpacity
           style={[styles.submitBtn, !isReady && styles.submitBtnDisabled]}
           onPress={handleSubmit}
@@ -225,7 +216,6 @@
     );
   }
 
-  /* InputField & Divider same as your original code */
   function InputField({ label, placeholder, value, onChangeText, keyboardType, emoji }: any) {
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 }}>
@@ -239,7 +229,6 @@
   }
   function Divider() { return <View style={{ height: 1, backgroundColor: BORDER }} />; }
 
-  // You can copy all your existing styles here unchanged
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: NAVY },
     scrollContent: { paddingBottom: 52 },
@@ -277,3 +266,5 @@
     submitBtnDisabled: { backgroundColor: SURFACE_MID, borderWidth: 1, borderColor: BORDER },
     submitText: { color: NAVY, fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
   });
+  
+ 
