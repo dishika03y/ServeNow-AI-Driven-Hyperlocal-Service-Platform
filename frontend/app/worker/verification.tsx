@@ -1,638 +1,685 @@
-import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
-  Alert,
-  ActivityIndicator,
-  Image,
-  SafeAreaView,
+  TouchableOpacity,
   StatusBar,
   Modal,
-  Pressable,
-} from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { apiRequest } from "@/src/api/api";
+  Animated,
+  Alert,
+} from 'react-native';
+import { router } from 'expo-router';
+import React, { useState, useRef, useEffect } from 'react';
+import Svg, { Path, Circle, Rect, Polyline, Line } from 'react-native-svg';
 
-// ── Design Tokens (matches WorkerOS screenshot) ──────────────────────────────
-const ACCENT   = "#00D68F";
-const NAVY     = "#0B2239";
-const NAVY_MID = "#0F2A45";
-const SURFACE  = "rgba(255,255,255,0.07)";
-const BORDER   = "rgba(255,255,255,0.10)";
-const TEXT     = "#EEF4FA";
-const MUTED    = "rgba(255,255,255,0.50)";
+// ── Brand Tokens (identical to Login / Signup / WorkerForm) ───
+const C = {
+  navy: '#081F5C',
+  navyLight: '#081F5C14',
+  navyMid: '#081F5C40',
+  sky: '#BAD6EB',
+  skyMid: '#BAD6EB50',
+  cream: '#F7F2EB',
+  creamDark: '#EDE7DC',
+  creamBorder: '#E8E2D8',
+  white: '#FFFFFF',
+  success: '#166534',
+  successBg: '#F0FDF4',
+  successBorder: '#BBF7D0',
+  successDot: '#22C55E',
+  error: '#991B1B',
+  errorBg: '#FEF2F2',
+};
 
-// ── Document slots config ─────────────────────────────────────────────────────
-const DOC_SLOTS = [
-  { key: "aadhaar_front", label: "Aadhaar Front",  icon: "card-outline",        required: true },
-  { key: "aadhaar_back",  label: "Aadhaar Back",   icon: "card-outline",        required: true },
-  { key: "selfie",        label: "Selfie",          icon: "person-circle-outline", required: true },
-  { key: "portfolio_1",   label: "Portfolio 1",    icon: "images-outline",      required: false },
-  { key: "portfolio_2",   label: "Portfolio 2",    icon: "images-outline",      required: false },
-] as const;
+// ── Icons ──────────────────────────────────────────────────────
+const BackIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+    <Path d="M11 4L6 9l5 5" stroke={C.navy} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
 
-type DocKey = typeof DOC_SLOTS[number]["key"];
-type DocsState = Record<DocKey, string | null>;
+const LogoMark = () => (
+  <Svg width={16} height={16} viewBox="0 0 18 18" fill="none">
+    <Path d="M9 2L14.5 5.5V12.5L9 16L3.5 12.5V5.5L9 2Z" fill={C.sky} />
+    <Circle cx={9} cy={9} r={2.5} fill={C.cream} />
+  </Svg>
+);
 
-// ── Component ─────────────────────────────────────────────────────────────────
-export default function Verification() {
-  const router  = useRouter();
-  const [loading, setLoading]     = useState(false);
-  const [activeSlot, setActiveSlot] = useState<DocKey | null>(null); // controls picker sheet
-  const [docs, setDocs] = useState<DocsState>({
-    aadhaar_front: null,
-    aadhaar_back:  null,
-    selfie:        null,
-    portfolio_1:   null,
-    portfolio_2:   null,
-  });
+const UploadIcon = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+    <Path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke={C.navy} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+    <Polyline points="17 8 12 3 7 8" stroke={C.navy} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+    <Line x1={12} y1={3} x2={12} y2={15} stroke={C.navy} strokeWidth={1.4} strokeLinecap="round" />
+  </Svg>
+);
 
-  // ── Open source-picker sheet ────────────────────────────────────────────────
-  const openPicker = (key: DocKey) => setActiveSlot(key);
-  const closePicker = () => setActiveSlot(null);
+const CheckIcon = ({ size = 10 }: { size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
+    <Path d="M2 6l3 3 5-5" stroke={C.white} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
 
-  // ── Take photo with camera ──────────────────────────────────────────────────
-  const takePhoto = async (key: DocKey) => {
-    closePicker();
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Required", "Please allow camera access.");
-      return;
+const CameraIcon = () => (
+  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke={C.navy} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx={12} cy={13} r={4} stroke={C.navy} strokeWidth={1.4} />
+  </Svg>
+);
+
+const GalleryIcon = () => (
+  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <Rect x={3} y={3} width={18} height={18} rx={2} stroke={C.navy} strokeWidth={1.4} />
+    <Circle cx={8.5} cy={8.5} r={1.5} stroke={C.navy} strokeWidth={1.4} />
+    <Polyline points="21 15 16 10 5 21" stroke={C.navy} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const XIcon = () => (
+  <Svg width={10} height={10} viewBox="0 0 10 10" fill="none">
+    <Path d="M2 2l6 6M8 2l-6 6" stroke={C.white} strokeWidth={1.5} strokeLinecap="round" />
+  </Svg>
+);
+
+const ShieldIcon = () => (
+  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+    <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke={C.navy} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const ArrowIcon = () => (
+  <Svg width={10} height={10} viewBox="0 0 10 10" fill="none">
+    <Path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke={C.navy} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+// ── Document slot colors (used as placeholder tints) ──────────
+const SLOT_TINTS = ['#D4C5B2', '#B2C5D4', '#C5D4B2', '#D4B2C5', '#C5C5B2'];
+
+// ── Document Slots ─────────────────────────────────────────────
+type DocSlot = {
+  key: string;
+  label: string;
+  hint: string;
+  required: boolean;
+};
+
+const REQUIRED_DOCS: DocSlot[] = [
+  { key: 'aadhaar_front', label: 'Aadhaar Front', hint: 'Clear photo of front side', required: true },
+  { key: 'aadhaar_back',  label: 'Aadhaar Back',  hint: 'Clear photo of back side',  required: true },
+  { key: 'selfie',        label: 'Live Selfie',   hint: 'Front-facing, well-lit',    required: true },
+];
+
+const OPTIONAL_DOCS: DocSlot[] = [
+  { key: 'portfolio_1', label: 'Portfolio Photo 1', hint: 'Show your best work', required: false },
+  { key: 'portfolio_2', label: 'Portfolio Photo 2', hint: 'Another work sample',  required: false },
+];
+
+// ── Filled doc colors (indexed) ───────────────────────────────
+let fillColorIndex = 0;
+
+// ── Progress Bar ───────────────────────────────────────────────
+function ProgressBar({ value }: { value: number }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: value, duration: 400, useNativeDriver: false }).start();
+  }, [value]);
+  return (
+    <View style={styles.progressTrack}>
+      <Animated.View
+        style={[
+          styles.progressFill,
+          { width: anim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) },
+        ]}
+      />
+    </View>
+  );
+}
+
+// ── Doc Card ───────────────────────────────────────────────────
+function DocCard({
+  slot,
+  filled,
+  fillColor,
+  onTap,
+  onRemove,
+}: {
+  slot: DocSlot;
+  filled: boolean;
+  fillColor?: string;
+  onTap: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.docCard, filled && styles.docCardFilled]}
+      onPress={filled ? undefined : onTap}
+      activeOpacity={0.8}
+    >
+      {filled ? (
+        <>
+          {/* Filled tint block */}
+          <View style={[styles.docTint, { backgroundColor: fillColor }]}>
+            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+              <Path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke={C.navy} strokeWidth={1.3} strokeOpacity={0.4} />
+              <Polyline points="14 2 14 8 20 8" stroke={C.navy} strokeWidth={1.3} strokeOpacity={0.4} />
+            </Svg>
+          </View>
+
+          {/* Label strip */}
+          <View style={styles.docFilledStrip}>
+            <View style={styles.docCheckBadge}>
+              <CheckIcon size={9} />
+            </View>
+            <Text style={styles.docFilledLabel} numberOfLines={1}>{slot.label}</Text>
+          </View>
+
+          {/* Remove */}
+          <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <XIcon />
+          </TouchableOpacity>
+        </>
+      ) : (
+        <View style={styles.docEmpty}>
+          <View style={styles.docIconBox}>
+            <UploadIcon />
+          </View>
+          <Text style={styles.docLabel}>{slot.label}</Text>
+          <Text style={styles.docHint}>{slot.hint}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ── Bottom Sheet ───────────────────────────────────────────────
+function UploadSheet({
+  visible,
+  slotLabel,
+  onCamera,
+  onGallery,
+  onClose,
+}: {
+  visible: boolean;
+  slotLabel: string;
+  onCamera: () => void;
+  onGallery: () => void;
+  onClose: () => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const bgAnim    = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 10 }),
+        Animated.timing(bgAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 300, duration: 200, useNativeDriver: true }),
+        Animated.timing(bgAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
     }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.75,
-    });
-    if (!result.canceled) {
-      setDocs((prev) => ({ ...prev, [key]: result.assets[0].uri }));
-    }
-  };
+  }, [visible]);
 
-  // ── Pick image from gallery ─────────────────────────────────────────────────
-  const pickFromGallery = async (key: DocKey) => {
-    closePicker();
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Required", "Please allow photo library access.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.75,
-    });
-    if (!result.canceled) {
-      setDocs((prev) => ({ ...prev, [key]: result.assets[0].uri }));
-    }
-  };
-
-  // ── Remove a selected image ─────────────────────────────────────────────────
-  const removeImage = (key: DocKey) => {
-    setDocs((prev) => ({ ...prev, [key]: null }));
-  };
-
-  // ── Upload & submit ─────────────────────────────────────────────────────────
-  const uploadDocuments = async () => {
-    const missing = DOC_SLOTS.filter((s) => s.required && !docs[s.key]);
-    if (missing.length) {
-      Alert.alert(
-        "Missing Documents",
-        `Please upload: ${missing.map((m) => m.label).join(", ")}.`
-      );
-      return;
-    }
-
-    setLoading(true);
-    const formData = new FormData();
-
-    (Object.keys(docs) as DocKey[]).forEach((key) => {
-      if (docs[key]) {
-        formData.append(key, {
-          uri:  docs[key],
-          name: `${key}.jpg`,
-          type: "image/jpeg",
-        } as any);
-      }
-    });
-
-    try {
-      await apiRequest("/workers/upload-documents", "POST", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      Alert.alert("Submitted!", "Documents uploaded. Pending admin verification.");
-      router.replace("/worker/pending-status");
-    } catch {
-      Alert.alert("Upload Failed", "Check your connection and try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Count filled required slots ─────────────────────────────────────────────
-  const requiredFilled = DOC_SLOTS.filter((s) => s.required && docs[s.key]).length;
-  const requiredTotal  = DOC_SLOTS.filter((s) => s.required).length;
+  if (!visible) return null;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={NAVY} />
+    <Modal transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[styles.sheetOverlay, { opacity: bgAnim }]}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Upload Document</Text>
+          <Text style={styles.sheetSub}>{slotLabel}</Text>
 
-      {/* ── Top Bar ── */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color={TEXT} />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Verification</Text>
-        <View style={{ width: 36 }} />
-      </View>
+          <TouchableOpacity style={styles.sheetOption} onPress={onCamera} activeOpacity={0.75}>
+            <View style={styles.sheetOptIcon}><CameraIcon /></View>
+            <View style={styles.sheetOptText}>
+              <Text style={styles.sheetOptLabel}>Take a Photo</Text>
+              <Text style={styles.sheetOptDesc}>Open camera to capture now</Text>
+            </View>
+            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+              <Path d="M6 4l4 4-4 4" stroke={C.navyMid} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sheetOption} onPress={onGallery} activeOpacity={0.75}>
+            <View style={styles.sheetOptIcon}><GalleryIcon /></View>
+            <View style={styles.sheetOptText}>
+              <Text style={styles.sheetOptLabel}>Choose from Gallery</Text>
+              <Text style={styles.sheetOptDesc}>Pick an existing photo</Text>
+            </View>
+            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+              <Path d="M6 4l4 4-4 4" stroke={C.navyMid} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sheetCancel} onPress={onClose} activeOpacity={0.75}>
+            <Text style={styles.sheetCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+// ── Main Screen ────────────────────────────────────────────────
+export default function VerificationScreen() {
+  const [docs, setDocs] = useState<Record<string, string>>({});
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [activeSlot, setActiveSlot] = useState<DocSlot | null>(null);
+
+  const allSlots   = [...REQUIRED_DOCS, ...OPTIONAL_DOCS];
+  const reqFilled  = REQUIRED_DOCS.filter(s => docs[s.key]).length;
+  const totalFilled = allSlots.filter(s => docs[s.key]).length;
+  const progress   = Math.round((reqFilled / REQUIRED_DOCS.length) * 100);
+  const isReady    = reqFilled === REQUIRED_DOCS.length;
+
+  const openSheet = (slot: DocSlot) => {
+    setActiveSlot(slot);
+    setSheetVisible(true);
+  };
+
+  const simulateUpload = () => {
+    if (!activeSlot) return;
+    const colorIndex = Object.keys(docs).length % SLOT_TINTS.length;
+    setDocs(prev => ({ ...prev, [activeSlot.key]: SLOT_TINTS[colorIndex] }));
+    setSheetVisible(false);
+  };
+
+  const removeDoc = (key: string) => {
+    setDocs(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!isReady) return;
+    Alert.alert(
+      'Submitted for Review',
+      "Your documents are under review. We'll notify you within 24 hours.",
+      [{ text: 'Back to Dashboard', onPress: () => router.back() }]
+    );
+  };
+
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.cream} />
+
+      {/* Background accents */}
+      <View style={styles.bgCircle1} />
+      <View style={styles.bgCircle2} />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero Text ── */}
-        <Text style={styles.heading}>Verify your identity</Text>
-        <Text style={styles.subText}>
-          Upload your documents to start accepting jobs. Required fields are marked.
-        </Text>
-
-        {/* ── Progress Pill ── */}
-        <View style={styles.progressRow}>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${(requiredFilled / requiredTotal) * 100}%` },
-              ]}
-            />
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
+            <BackIcon />
+          </TouchableOpacity>
+          <View style={styles.brandRow}>
+            <View style={styles.logoMark}><LogoMark /></View>
+            <Text style={styles.brandText}>ServeNow</Text>
           </View>
-          <Text style={styles.progressLabel}>
-            {requiredFilled}/{requiredTotal} required
-          </Text>
+          <View style={{ width: 36 }} />
         </View>
 
-        {/* ── Document Cards ── */}
-        <Text style={styles.sectionLabel}>REQUIRED DOCUMENTS</Text>
-        {DOC_SLOTS.filter((s) => s.required).map((slot) => (
-          <DocCard
-            key={slot.key}
-            slot={slot}
-            uri={docs[slot.key]}
-            onPick={() => openPicker(slot.key)}
-            onRemove={() => removeImage(slot.key)}
-          />
-        ))}
+        {/* Hero */}
+        <View style={styles.hero}>
+          <Text style={styles.heading}>
+            Verify your{'\n'}
+            <Text style={styles.headingItalic}>identity.</Text>
+          </Text>
+          <Text style={styles.heroSub}>
+            Upload your documents to start accepting jobs. Required documents are marked below.
+          </Text>
 
-        <Text style={[styles.sectionLabel, { marginTop: 8 }]}>
-          PORTFOLIO{" "}
-          <Text style={styles.optionalTag}>OPTIONAL</Text>
-        </Text>
-        {DOC_SLOTS.filter((s) => !s.required).map((slot) => (
-          <DocCard
-            key={slot.key}
-            slot={slot}
-            uri={docs[slot.key]}
-            onPick={() => openPicker(slot.key)}
-            onRemove={() => removeImage(slot.key)}
-          />
-        ))}
-
-        {/* ── Submit ── */}
-        <TouchableOpacity
-          style={[
-            styles.submitBtn,
-            requiredFilled < requiredTotal && styles.submitBtnDisabled,
-          ]}
-          onPress={uploadDocuments}
-          disabled={loading || requiredFilled < requiredTotal}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color={NAVY} />
-          ) : (
-            <View style={styles.submitInner}>
-              <Ionicons name="cloud-upload-outline" size={18} color={NAVY} />
-              <Text style={styles.submitText}>Submit for Verification</Text>
+          {/* Progress card */}
+          <View style={styles.progressCard}>
+            <View style={styles.progressLabelRow}>
+              <Text style={styles.progressLabel}>Required documents</Text>
+              <Text style={styles.progressValue}>{reqFilled} / {REQUIRED_DOCS.length}</Text>
             </View>
+            <ProgressBar value={progress} />
+            {reqFilled > 0 && (
+              <Text style={styles.progressHint}>
+                {isReady ? '✦ All required documents uploaded' : `${REQUIRED_DOCS.length - reqFilled} more required`}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Required documents */}
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>REQUIRED DOCUMENTS</Text>
+          <View style={styles.requiredBadge}>
+            <Text style={styles.requiredBadgeText}>3 needed</Text>
+          </View>
+        </View>
+
+        <View style={styles.docGrid}>
+          {REQUIRED_DOCS.map(slot => (
+            <DocCard
+              key={slot.key}
+              slot={slot}
+              filled={!!docs[slot.key]}
+              fillColor={docs[slot.key]}
+              onTap={() => openSheet(slot)}
+              onRemove={() => removeDoc(slot.key)}
+            />
+          ))}
+        </View>
+
+        {/* Portfolio (optional) */}
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>PORTFOLIO</Text>
+          <View style={styles.optionalBadge}>
+            <Text style={styles.optionalBadgeText}>Optional</Text>
+          </View>
+        </View>
+        <Text style={styles.sectionDesc}>Show off your past work to attract more clients.</Text>
+
+        <View style={styles.docGridRow}>
+          {OPTIONAL_DOCS.map(slot => (
+            <DocCard
+              key={slot.key}
+              slot={slot}
+              filled={!!docs[slot.key]}
+              fillColor={docs[slot.key]}
+              onTap={() => openSheet(slot)}
+              onRemove={() => removeDoc(slot.key)}
+            />
+          ))}
+        </View>
+
+        {/* Submit */}
+        <TouchableOpacity
+          style={[styles.submitBtn, !isReady && styles.submitBtnDisabled]}
+          onPress={handleSubmit}
+          disabled={!isReady}
+          activeOpacity={isReady ? 0.88 : 1}
+        >
+          {isReady ? (
+            <>
+              <Text style={styles.submitText}>Submit for Verification</Text>
+              <View style={styles.submitArrow}><ArrowIcon /></View>
+            </>
+          ) : (
+            <Text style={styles.submitTextDisabled}>
+              Upload {REQUIRED_DOCS.length - reqFilled} more required doc{REQUIRED_DOCS.length - reqFilled > 1 ? 's' : ''} to continue
+            </Text>
           )}
         </TouchableOpacity>
 
-        <Text style={styles.disclaimer}>
-          Your documents are encrypted and reviewed only by our trust &amp; safety team.
-        </Text>
+        {/* Disclaimer */}
+        <View style={styles.disclaimer}>
+          <ShieldIcon />
+          <Text style={styles.disclaimerText}>
+            Your documents are encrypted and reviewed only by our trust & safety team.
+          </Text>
+        </View>
+
+        {/* Trust strip */}
+        <View style={styles.trust}>
+          <Text style={styles.trustText}>✦ 256-bit encrypted</Text>
+          <View style={styles.trustDot} />
+          <Text style={styles.trustText}>GDPR compliant</Text>
+          <View style={styles.trustDot} />
+          <Text style={styles.trustText}>24hr review</Text>
+        </View>
       </ScrollView>
 
-      {/* ── Source Picker Bottom Sheet ── */}
-      <Modal
-        visible={activeSlot !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={closePicker}
-      >
-        <Pressable style={sheet.backdrop} onPress={closePicker}>
-          <Pressable style={sheet.sheet}>
-            {/* Handle bar */}
-            <View style={sheet.handle} />
-
-            <Text style={sheet.sheetTitle}>Upload Document</Text>
-            <Text style={sheet.sheetSub}>
-              {activeSlot
-                ? DOC_SLOTS.find((s) => s.key === activeSlot)?.label
-                : ""}
-            </Text>
-
-            {/* Camera option */}
-            <TouchableOpacity
-              style={sheet.option}
-              onPress={() => activeSlot && takePhoto(activeSlot)}
-              activeOpacity={0.8}
-            >
-              <View style={sheet.optionIcon}>
-                <Ionicons name="camera" size={22} color={ACCENT} />
-              </View>
-              <View style={sheet.optionText}>
-                <Text style={sheet.optionLabel}>Take a Photo</Text>
-                <Text style={sheet.optionDesc}>Open camera to capture now</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={MUTED} />
-            </TouchableOpacity>
-
-            {/* Gallery option */}
-            <TouchableOpacity
-              style={sheet.option}
-              onPress={() => activeSlot && pickFromGallery(activeSlot)}
-              activeOpacity={0.8}
-            >
-              <View style={sheet.optionIcon}>
-                <Ionicons name="images" size={22} color={ACCENT} />
-              </View>
-              <View style={sheet.optionText}>
-                <Text style={sheet.optionLabel}>Choose from Gallery</Text>
-                <Text style={sheet.optionDesc}>Pick an existing photo</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={MUTED} />
-            </TouchableOpacity>
-
-            {/* Cancel */}
-            <TouchableOpacity style={sheet.cancelBtn} onPress={closePicker}>
-              <Text style={sheet.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </SafeAreaView>
-  );
-}
-
-// ── DocCard sub-component ─────────────────────────────────────────────────────
-type SlotDef = { key: DocKey; label: string; icon: string; required: boolean };
-
-function DocCard({
-  slot,
-  uri,
-  onPick,
-  onRemove,
-}: {
-  slot: SlotDef;
-  uri: string | null;
-  onPick: () => void;
-  onRemove: () => void;
-}) {
-  const filled = Boolean(uri);
-
-  return (
-    <View style={cardStyles.wrapper}>
-      <TouchableOpacity
-        style={[cardStyles.card, filled && cardStyles.cardFilled]}
-        onPress={onPick}
-        activeOpacity={0.8}
-      >
-        {filled ? (
-          <Image source={{ uri: uri! }} style={cardStyles.preview} resizeMode="cover" />
-        ) : (
-          <View style={cardStyles.placeholder}>
-            <View style={cardStyles.iconCircle}>
-              <Ionicons name={slot.icon as any} size={22} color={ACCENT} />
-            </View>
-            <Text style={cardStyles.placeholderLabel}>{slot.label}</Text>
-            <Text style={cardStyles.tapHint}>Tap to upload</Text>
-          </View>
-        )}
-
-        {/* Filled overlay with label */}
-        {filled && (
-          <View style={cardStyles.filledOverlay}>
-            <View style={cardStyles.checkBadge}>
-              <Ionicons name="checkmark" size={12} color={NAVY} />
-            </View>
-            <Text style={cardStyles.filledLabel}>{slot.label}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-
-      {/* Remove button */}
-      {filled && (
-        <TouchableOpacity style={cardStyles.removeBtn} onPress={onRemove}>
-          <Ionicons name="close" size={14} color={NAVY} />
-        </TouchableOpacity>
-      )}
+      {/* Bottom Sheet */}
+      <UploadSheet
+        visible={sheetVisible}
+        slotLabel={activeSlot?.label ?? ''}
+        onCamera={simulateUpload}
+        onGallery={simulateUpload}
+        onClose={() => setSheetVisible(false)}
+      />
     </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles ─────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: NAVY,
+  root: { flex: 1, backgroundColor: C.cream },
+
+  bgCircle1: {
+    position: 'absolute', width: 320, height: 320, borderRadius: 160,
+    backgroundColor: C.sky, opacity: 0.32, top: -80, right: -80,
   },
+  bgCircle2: {
+    position: 'absolute', width: 180, height: 180, borderRadius: 90,
+    backgroundColor: C.navy, opacity: 0.06, bottom: 60, left: -50,
+  },
+
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 48 },
+
+  // Top bar
   topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 8,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: SURFACE,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: C.white, borderWidth: 1, borderColor: C.creamBorder,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: C.navy, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
-  topBarTitle: {
-    color: TEXT,
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoMark: {
+    width: 28, height: 28, backgroundColor: C.navy,
+    borderRadius: 8, alignItems: 'center', justifyContent: 'center',
   },
-  scroll: {
-    flex: 1,
+  brandText: {
+    fontFamily: 'serif', fontSize: 17, fontWeight: '700',
+    color: C.navy, letterSpacing: -0.3,
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 60,
-  },
-  heading: {
-    color: TEXT,
-    fontSize: 26,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-    marginBottom: 6,
-  },
-  subText: {
-    color: MUTED,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  // Progress
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 24,
-  },
-  progressBar: {
-    flex: 1,
-    height: 5,
-    borderRadius: 10,
-    backgroundColor: SURFACE,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: ACCENT,
-    borderRadius: 10,
-  },
-  progressLabel: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  // Section
-  sectionLabel: {
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    marginBottom: 10,
-  },
-  optionalTag: {
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.8,
-  },
-  // Submit
-  submitBtn: {
-    backgroundColor: ACCENT,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    marginTop: 24,
-  },
-  submitBtnDisabled: {
-    opacity: 0.4,
-  },
-  submitInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  submitText: {
-    color: NAVY,
-    fontWeight: "800",
-    fontSize: 16,
-    letterSpacing: 0.2,
-  },
-  disclaimer: {
-    color: "rgba(255,255,255,0.25)",
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 16,
-    lineHeight: 18,
-  },
-});
 
-const cardStyles = StyleSheet.create({
-  wrapper: {
-    position: "relative",
-    marginBottom: 12,
+  // Hero
+  hero: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
+  heading: {
+    fontFamily: 'serif', fontSize: 34, fontWeight: '700',
+    color: C.navy, letterSpacing: -0.8, lineHeight: 40, marginBottom: 10,
   },
-  card: {
-    height: 120,
-    backgroundColor: SURFACE,
+  headingItalic: { fontStyle: 'italic', color: C.sky },
+  heroSub: {
+    fontSize: 13, color: C.navy, opacity: 0.45,
+    lineHeight: 19, marginBottom: 20,
+  },
+
+  // Progress
+  progressCard: {
+    backgroundColor: C.white, borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: C.creamBorder,
+    shadowColor: C.navy, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06, shadowRadius: 12, elevation: 3,
+  },
+  progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  progressLabel: { fontSize: 11, fontWeight: '600', color: C.navy, opacity: 0.5, letterSpacing: 0.4 },
+  progressValue: { fontSize: 13, fontWeight: '700', color: C.navy },
+  progressTrack: { height: 6, backgroundColor: C.creamBorder, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: C.navy, borderRadius: 3 },
+  progressHint: {
+    fontSize: 11, color: C.navy, opacity: 0.4,
+    marginTop: 10, fontWeight: '500',
+  },
+
+  // Section headers
+  sectionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 20, paddingTop: 28, paddingBottom: 12,
+  },
+  sectionTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: C.navy, opacity: 0.45 },
+  sectionDesc: {
+    fontSize: 12, color: C.navy, opacity: 0.4,
+    paddingHorizontal: 20, marginTop: -4, marginBottom: 12, lineHeight: 17,
+  },
+  requiredBadge: {
+    backgroundColor: C.navy, borderRadius: 20,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  requiredBadgeText: { fontSize: 9, fontWeight: '700', color: C.cream, letterSpacing: 0.4 },
+  optionalBadge: {
+    backgroundColor: C.creamBorder, borderRadius: 20,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  optionalBadgeText: { fontSize: 9, fontWeight: '600', color: C.navy, opacity: 0.5, letterSpacing: 0.4 },
+
+  // Doc grids
+  docGrid: { paddingHorizontal: 20, gap: 10 },
+  docGridRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10 },
+
+  // Doc card
+  docCard: {
+    backgroundColor: C.white,
     borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  cardFilled: {
-    borderColor: ACCENT,
     borderWidth: 1.5,
-  },
-  preview: {
-    width: "100%",
-    height: "100%",
-  },
-  placeholder: {
+    borderColor: C.creamBorder,
+    height: 104,
+    overflow: 'hidden',
+    shadowColor: C.navy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 4,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,214,143,0.12)",
-    justifyContent: "center",
-    alignItems: "center",
+  docCardFilled: { borderColor: C.successBorder },
+
+  docEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: 12,
+  },
+  docIconBox: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: C.navyLight,
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: 2,
   },
-  placeholderLabel: {
-    color: TEXT,
-    fontSize: 13,
-    fontWeight: "700",
+  docLabel: { fontSize: 12, fontWeight: '600', color: C.navy, textAlign: 'center' },
+  docHint:  { fontSize: 10, color: C.navy, opacity: 0.35, textAlign: 'center' },
+
+  docTint: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 36,
+    alignItems: 'center', justifyContent: 'center',
   },
-  tapHint: {
-    color: MUTED,
-    fontSize: 11,
-  },
-  // Filled state overlay
-  filledOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(11,34,57,0.75)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
+  docFilledStrip: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    height: 36,
+    backgroundColor: C.white,
+    borderTopWidth: 1,
+    borderTopColor: C.successBorder,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
     gap: 6,
   },
-  checkBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: ACCENT,
-    justifyContent: "center",
-    alignItems: "center",
+  docCheckBadge: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: C.successDot,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
-  filledLabel: {
-    color: TEXT,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  // Remove button
-  removeBtn: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: ACCENT,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
-  },
-});
+  docFilledLabel: { fontSize: 11, fontWeight: '600', color: C.navy, flex: 1 },
 
-// ── Bottom Sheet Styles ───────────────────────────────────────────────────────
-const sheet = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "flex-end",
+  docRemoveBtn: {
+    position: 'absolute', top: 8, right: 8,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: C.navy,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Submit
+  submitBtn: {
+    marginHorizontal: 20, marginTop: 28, height: 54,
+    backgroundColor: C.navy, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+  },
+  submitBtnDisabled: {
+    backgroundColor: C.white, borderWidth: 1.5, borderColor: C.creamBorder,
+  },
+  submitText: { fontSize: 15, fontWeight: '700', color: C.cream, letterSpacing: 0.2 },
+  submitTextDisabled: { fontSize: 13, fontWeight: '500', color: C.navy, opacity: 0.35 },
+  submitArrow: {
+    width: 24, height: 24, backgroundColor: C.sky,
+    borderRadius: 7, alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Disclaimer
+  disclaimer: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    marginHorizontal: 20, marginTop: 16,
+    backgroundColor: C.navyLight, borderRadius: 12, padding: 12,
+  },
+  disclaimerText: {
+    flex: 1, fontSize: 11, color: C.navy, opacity: 0.4,
+    lineHeight: 16, fontWeight: '400',
+  },
+
+  // Trust strip
+  trust: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, marginTop: 12, marginHorizontal: 20,
+    backgroundColor: C.navyLight, borderRadius: 12, padding: 12,
+  },
+  trustText: { fontSize: 10, color: C.navy, opacity: 0.35, fontWeight: '500' },
+  trustDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.navy, opacity: 0.2 },
+
+  // Bottom sheet
+  sheetOverlay: {
+    flex: 1, backgroundColor: 'rgba(8,31,92,0.35)',
+    justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: "#0F2A45",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 36,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: BORDER,
+    backgroundColor: C.white,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 36,
   },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignSelf: "center",
-    marginBottom: 20,
+  sheetHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: C.creamBorder, alignSelf: 'center', marginBottom: 20,
   },
   sheetTitle: {
-    color: TEXT,
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 2,
+    fontFamily: 'serif', fontSize: 22, fontWeight: '700',
+    color: C.navy, letterSpacing: -0.4, marginBottom: 2,
   },
   sheetSub: {
-    color: ACCENT,
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 20,
+    fontSize: 13, color: C.navy, opacity: 0.4, marginBottom: 20,
   },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: SURFACE,
-    borderRadius: 14,
-    padding: 16,
+  sheetOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: C.cream, borderRadius: 14,
+    padding: 14, borderWidth: 1, borderColor: C.creamBorder,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: BORDER,
-    gap: 12,
   },
-  optionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,214,143,0.12)",
-    justifyContent: "center",
-    alignItems: "center",
+  sheetOptIcon: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: C.navyLight,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
-  optionText: {
-    flex: 1,
+  sheetOptText: { flex: 1 },
+  sheetOptLabel: { fontSize: 14, fontWeight: '600', color: C.navy, marginBottom: 2 },
+  sheetOptDesc:  { fontSize: 11, color: C.navy, opacity: 0.4 },
+  sheetCancel: {
+    marginTop: 6, height: 48,
+    backgroundColor: C.cream, borderRadius: 14,
+    borderWidth: 1.5, borderColor: C.creamBorder,
+    alignItems: 'center', justifyContent: 'center',
   },
-  optionLabel: {
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  optionDesc: {
-    color: MUTED,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  cancelBtn: {
-    marginTop: 6,
-    alignItems: "center",
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  cancelText: {
-    color: MUTED,
-    fontSize: 15,
-    fontWeight: "700",
-  },
+  sheetCancelText: { fontSize: 14, fontWeight: '600', color: C.navy, opacity: 0.45 },
 });
