@@ -14,28 +14,30 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/src/api/api";
 
 // --- Design tokens ---
-const NAVY = "#0B2239";
-const ACCENT = "#00D68F";
-const ACCENT_DIM = "rgba(0,214,143,0.12)";
-const SKY = "#52B4FF";
-const SKY_DIM = "rgba(82,180,255,0.12)";
-const WARM = "#FF8C42";
-const WARM_DIM = "rgba(255,140,66,0.12)";
-const SURFACE = "rgba(255,255,255,0.04)";
-const SURFACE_MID = "rgba(255,255,255,0.07)";
-const BORDER = "rgba(255,255,255,0.08)";
-const TEXT = "#EEF4FA";
-const MUTED = "rgba(200,220,235,0.55)";
-const DANGER = "#FF4D4D";
-const DANGER_DIM = "rgba(255,77,77,0.10)";
-const DANGER_BDR = "rgba(255,77,77,0.22)";
+const CREAM      = "#F7F2EB";
+const NAVY       = "#081F5C";
+const SKY        = "#BAD6EB";
+const SKY_DIM    = "rgba(186,214,235,0.18)";
+const SKY_BORDER = "rgba(186,214,235,0.35)";
+const WHITE      = "#FFFFFF";
+const INK        = "#081F5C";
+const MUTED      = "rgba(8,31,92,0.45)";
+const BORDER     = "rgba(8,31,92,0.10)";
+const SURFACE    = "rgba(8,31,92,0.04)";
+const WARM       = "#E8855A";
+const WARM_DIM   = "rgba(232,133,90,0.12)";
+const SUCCESS    = "#22A06B";
+const SUCCESS_DIM= "rgba(34,160,107,0.12)";
+const DANGER     = "#D94F4F";
+const DANGER_DIM = "rgba(217,79,79,0.08)";
+const DANGER_BDR = "rgba(217,79,79,0.20)";
 
 export default function CustomerDashboard() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [requests, setRequests] = useState<any[]>([]);
-  const [isWorker, setIsWorker] = useState(false); // Added to check worker status
+  const [profile, setProfile]     = useState<any>(null);
+  const [requests, setRequests]   = useState<any[]>([]);
+  const [isWorker, setIsWorker]   = useState(false);
 
   const fetchData = async () => {
     try {
@@ -43,17 +45,11 @@ export default function CustomerDashboard() {
         apiRequest("/users/me", "GET"),
         apiRequest("/users/me/requests", "GET"),
       ]);
-
       if (profileRes.status === "fulfilled") {
         const user = profileRes.value;
-
-        console.log("USER DATA:", user); //debug log to verify data structure
-
         setProfile(user);
-
         setIsWorker(user?.is_worker === true);
       }
-
       if (requestsRes.status === "fulfilled") {
         setRequests(requestsRes.value.data || []);
       }
@@ -68,36 +64,25 @@ export default function CustomerDashboard() {
   const handleWorkerBannerPress = async () => {
     try {
       const workerProfile = await apiRequest("/workers/me", "GET");
-      console.log("WORKER PROFILE:", workerProfile);
-      console.log("VERIFICATION STAGE:", workerProfile?.verificationStage);
-
       if (workerProfile?.verificationStage === "BASIC_DETAILS_SUBMITTED") {
         router.push("/worker/verification");
-      } else if (
-        workerProfile?.verificationStage === "COMPLETED_AWAITING_REVIEW"
-      ) {
+      } else if (workerProfile?.verificationStage === "COMPLETED_AWAITING_REVIEW") {
         Alert.alert("Under Review", "Your profile is under review.");
       } else {
         router.push("/worker/verification");
       }
-    } catch (err: any) {
+    } catch {
       router.push("/worker/become-worker");
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
+  const onRefresh = useCallback(() => { setRefreshing(true); fetchData(); }, []);
 
   const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
+    const h = new Date().getHours();
+    if (h < 12) return "Good Morning";
+    if (h < 17) return "Good Afternoon";
     return "Good Evening";
   };
 
@@ -105,18 +90,12 @@ export default function CustomerDashboard() {
     Alert.alert("Sign Out", "Are you sure you want to exit?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Logout",
-        style: "destructive",
+        text: "Logout", style: "destructive",
         onPress: async () => {
           try {
-            // Clear the actual keys used in LoginScreen
             await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
-
-            // Use replace to ensure the user cannot "Go Back" to the dashboard
             router.replace("/auth/login");
-          } catch (e) {
-            console.error("Logout Error:", e);
-          }
+          } catch (e) { console.error("Logout Error:", e); }
         },
       },
     ]);
@@ -125,105 +104,62 @@ export default function CustomerDashboard() {
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: "center" }]}>
-        <ActivityIndicator size="large" color={ACCENT} />
+        <ActivityIndicator size="large" color={NAVY} />
       </View>
     );
   }
 
   const initials =
-    profile?.fullName
-      ?.split(" ")
-      .map((n: any) => n[0])
-      .join("")
-      .toUpperCase() || "??";
+    profile?.fullName?.split(" ").map((n: any) => n[0]).join("").toUpperCase() || "??";
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={ACCENT}
-        />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={NAVY} />}
     >
-      {/* --- Top Bar --- */}
+      {/* Top Bar */}
       <View style={styles.topBar}>
         <View>
-          <Text style={{ color: MUTED, fontSize: 11 }}>Your service hub</Text>
+          <Text style={styles.topBarSub}>Your service hub</Text>
           <Text style={styles.dateLabel}>
-            {new Date().toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-            })}
+            {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.avatarBtn}
-          onPress={() => router.push("/customer/profile")}
-        >
+        <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push("/customer/profile")}>
           <Text style={styles.avatarText}>{initials}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* --- Hero Section --- */}
+      {/* Hero */}
       <View style={styles.hero}>
         <Text style={styles.greeting}>{getGreeting()},</Text>
         <Text style={styles.heroName}>{profile?.fullName || "User"}</Text>
         <View style={styles.locationBadge}>
-          <Text style={styles.locationText}>
-            📍 {profile?.city || "Set Location"}
-          </Text>
+          <Text style={styles.locationText}>📍 {profile?.city || "Set Location"}</Text>
         </View>
       </View>
 
-      {/* --- Stats Cards --- */}
+      {/* Stats */}
       <View style={styles.statsGrid}>
-        <StatCard
-          icon="📦"
-          value={requests.length}
-          label="Your Orders"
-          color={SKY}
-          bg={SKY_DIM}
-        />
-        <StatCard
-          icon="🕒"
-          value={requests.filter((r) => r.status !== "completed").length}
-          label="Active"
-          color={WARM}
-          bg={WARM_DIM}
-        />
+        <StatCard icon="📦" value={requests.length}                                        label="Your Orders" color={NAVY}    bg={SKY_DIM}    border={SKY_BORDER} />
+        <StatCard icon="🕒" value={requests.filter((r) => r.status !== "completed").length} label="Active"      color={WARM}    bg={WARM_DIM}   border="rgba(232,133,90,0.22)" />
       </View>
 
-      <TouchableOpacity
-        style={styles.workerBanner}
-        onPress={handleWorkerBannerPress}
-      >
+      {/* Worker Banner */}
+      <TouchableOpacity style={styles.workerBanner} onPress={handleWorkerBannerPress} activeOpacity={0.85}>
         <View style={styles.workerBannerContent}>
           <Text style={{ fontSize: 26 }}>{isWorker ? "👷‍♂️" : "🚀"}</Text>
-
           <View>
-            <Text style={styles.workerBannerTitle}>
-              {isWorker ? "Switch to Worker Mode" : "Become a Worker"}
-            </Text>
-
-            <Text style={styles.workerBannerSub}>
-              {isWorker
-                ? "Manage jobs, earnings & profile"
-                : "Start earning by offering services"}
-            </Text>
+            <Text style={styles.workerBannerTitle}>{isWorker ? "Switch to Worker Mode" : "Become a Worker"}</Text>
+            <Text style={styles.workerBannerSub}>{isWorker ? "Manage jobs, earnings & profile" : "Start earning by offering services"}</Text>
           </View>
         </View>
-
-        <Text style={styles.workerBannerLink}>
-          {isWorker ? "Open →" : "Apply →"}
-        </Text>
+        <Text style={styles.workerBannerLink}>{isWorker ? "Open →" : "Apply →"}</Text>
       </TouchableOpacity>
 
-      {/* --- Recent Activity --- */}
+      {/* Recent Activity */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
         <TouchableOpacity onPress={() => router.push("/customer/history")}>
@@ -234,42 +170,21 @@ export default function CustomerDashboard() {
       <View style={styles.activityCard}>
         {requests.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              You haven’t booked any services yet.
-            </Text>
-            <Text style={{ color: MUTED, marginTop: 6 }}>
-              Tap “Book Now” to get started 🚀
-            </Text>
+            <Text style={styles.emptyText}>You haven't booked any services yet.</Text>
+            <Text style={{ color: MUTED, marginTop: 6 }}>Tap "Book Now" to get started 🚀</Text>
           </View>
         ) : (
           requests.slice(0, 3).map((req, idx) => (
             <TouchableOpacity key={req.id || idx} style={styles.requestRow}>
-              <View
-                style={[
-                  styles.iconBox,
-                  {
-                    backgroundColor:
-                      req.status === "completed" ? ACCENT_DIM : WARM_DIM,
-                  },
-                ]}
-              >
-                <Text style={{ fontSize: 18 }}>
-                  {req.status === "completed" ? "✅" : "⏳"}
-                </Text>
+              <View style={[styles.iconBox, { backgroundColor: req.status === "completed" ? SUCCESS_DIM : WARM_DIM }]}>
+                <Text style={{ fontSize: 18 }}>{req.status === "completed" ? "✅" : "⏳"}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.reqTitle}>
-                  {req.service_type || "Service"}
-                </Text>
+                <Text style={styles.reqTitle}>{req.service_type || "Service"}</Text>
                 <Text style={styles.reqSub}>{req.date || "Just now"}</Text>
               </View>
-              <View style={styles.statusBadge}>
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: req.status === "completed" ? ACCENT : WARM },
-                  ]}
-                >
+              <View style={[styles.statusBadge, { backgroundColor: req.status === "completed" ? SUCCESS_DIM : WARM_DIM }]}>
+                <Text style={[styles.statusText, { color: req.status === "completed" ? SUCCESS : WARM }]}>
                   {req.status?.toUpperCase()}
                 </Text>
               </View>
@@ -278,64 +193,35 @@ export default function CustomerDashboard() {
         )}
       </View>
 
-      {/* --- Action Center --- */}
-      <Text style={[styles.sectionTitle, { marginLeft: 22, marginTop: 20 }]}>
-        ACTION CENTER
-      </Text>
+      {/* Action Center */}
+      <Text style={[styles.sectionTitle, { marginLeft: 22, marginTop: 20 }]}>ACTION CENTER</Text>
       <View style={styles.actionsGrid}>
-        <ActionBtn
-          emoji="🛠️"
-          title="Book Now"
-          sub="Find a pro"
-          onPress={() => router.push("/(tabs)/home")}
-        />
-        <ActionBtn
-          emoji="💳"
-          title="Wallet"
-          sub="Payments"
-          onPress={() => {}}
-        />
-        <ActionBtn
-          emoji="🎧"
-          title="Support"
-          sub="Get help"
-          onPress={() => {}}
-        />
+        <ActionBtn emoji="🛠️" title="Book Now"  sub="Find a pro"  onPress={() => router.push("/(tabs)/home")} />
+        <ActionBtn emoji="💳" title="Wallet"     sub="Payments"    onPress={() => {}} />
+        <ActionBtn emoji="🎧" title="Support"    sub="Get help"    onPress={() => {}} />
       </View>
 
-      {/* --- Sign Out --- */}
+      {/* Sign Out */}
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Sign Out Securely</Text>
       </TouchableOpacity>
-      <View
-        style={{
-          marginHorizontal: 22,
-          marginTop: 10,
-          backgroundColor: SURFACE,
-          padding: 14,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: BORDER,
-        }}
-      >
-        <Text style={{ color: TEXT, fontWeight: "700" }}>Need help today?</Text>
-        <Text style={{ color: MUTED, fontSize: 12, marginTop: 4 }}>
-          Book trusted professionals near you instantly.
-        </Text>
+
+      <View style={styles.helpCard}>
+        <Text style={styles.helpTitle}>Need help today?</Text>
+        <Text style={styles.helpSub}>Book trusted professionals near you instantly.</Text>
       </View>
     </ScrollView>
   );
 }
 
-// --- Helpers ---
-function StatCard({ icon, value, label, color, bg }: any) {
+function StatCard({ icon, value, label, color, bg, border }: any) {
   return (
-    <View style={[styles.statCard, { borderColor: BORDER }]}>
-      <View style={[styles.statIcon, { backgroundColor: bg }]}>
+    <View style={[styles.statCard, { borderColor: border, backgroundColor: bg }]}>
+      <View style={[styles.statIcon, { backgroundColor: WHITE }]}>
         <Text style={{ fontSize: 16 }}>{icon}</Text>
       </View>
       <View>
-        <Text style={[styles.statValue, { color: TEXT }]}>{value}</Text>
+        <Text style={[styles.statValue, { color }]}>{value}</Text>
         <Text style={styles.statLabel}>{label}</Text>
       </View>
     </View>
@@ -344,7 +230,7 @@ function StatCard({ icon, value, label, color, bg }: any) {
 
 function ActionBtn({ emoji, title, sub, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.actionItem} onPress={onPress}>
+    <TouchableOpacity style={styles.actionItem} onPress={onPress} activeOpacity={0.8}>
       <Text style={{ fontSize: 24, marginBottom: 8 }}>{emoji}</Text>
       <Text style={styles.actionTitle}>{title}</Text>
       <Text style={styles.actionSub}>{sub}</Text>
@@ -353,159 +239,110 @@ function ActionBtn({ emoji, title, sub, onPress }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: NAVY },
-  scrollContent: { paddingBottom: 40 },
+  container:    { flex: 1, backgroundColor: CREAM },
+  scrollContent:{ paddingBottom: 40 },
+
   topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 22,
-    paddingTop: 60,
-    paddingBottom: 20,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 22, paddingTop: 60, paddingBottom: 20,
   },
-  appLabel: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 2,
-  },
-  dateLabel: { color: MUTED, fontSize: 12, marginTop: 2 },
+  topBarSub:  { color: MUTED, fontSize: 11, fontWeight: "600" },
+  dateLabel:  { color: MUTED, fontSize: 12, marginTop: 2 },
   avatarBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: SURFACE_MID,
-    borderWidth: 1,
-    borderColor: BORDER,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 42, height: 42, borderRadius: 14,
+    backgroundColor: NAVY, justifyContent: "center", alignItems: "center",
+    shadowColor: NAVY, shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  avatarText: { color: TEXT, fontSize: 14, fontWeight: "700" },
-  hero: { paddingHorizontal: 22, marginBottom: 20 },
-  greeting: { color: MUTED, fontSize: 16, fontWeight: "500" },
-  heroName: { color: TEXT, fontSize: 32, fontWeight: "800", marginVertical: 4 },
-  locationBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: SURFACE,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: BORDER,
+  avatarText: { color: WHITE, fontSize: 14, fontWeight: "700" },
+
+  hero:         { paddingHorizontal: 22, marginBottom: 20 },
+  greeting:     { color: MUTED, fontSize: 16, fontWeight: "500" },
+  heroName:     { color: INK, fontSize: 32, fontWeight: "800", marginVertical: 4, letterSpacing: -0.5 },
+  locationBadge:{
+    alignSelf: "flex-start", backgroundColor: WHITE,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    borderWidth: 1, borderColor: BORDER,
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   locationText: { color: MUTED, fontSize: 13 },
-  statsGrid: { flexDirection: "row", paddingHorizontal: 22, gap: 15 },
+
+  statsGrid:  { flexDirection: "row", paddingHorizontal: 22, gap: 14 },
   statCard: {
-    flex: 1,
-    backgroundColor: SURFACE,
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    flex: 1, padding: 16, borderRadius: 20, borderWidth: 1.5,
+    flexDirection: "row", alignItems: "center", gap: 12,
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 40, height: 40, borderRadius: 12,
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
-  statValue: { fontSize: 22, fontWeight: "800" },
-  statLabel: { color: MUTED, fontSize: 12 },
+  statValue:  { fontSize: 22, fontWeight: "800" },
+  statLabel:  { color: MUTED, fontSize: 12, marginTop: 1 },
 
-  // New Worker Banner Styles
   workerBanner: {
-    marginHorizontal: 22,
-    marginTop: 25,
-    backgroundColor: "rgba(0, 214, 143, 0.08)",
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0, 214, 143, 0.2)",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    marginHorizontal: 22, marginTop: 18,
+    backgroundColor: NAVY, borderRadius: 24, padding: 20,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    shadowColor: NAVY, shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
-  workerBannerContent: { flexDirection: "row", gap: 15, alignItems: "center" },
-  workerBannerTitle: { color: TEXT, fontSize: 16, fontWeight: "800" },
-  workerBannerSub: { color: MUTED, fontSize: 12, marginTop: 2 },
-  workerBannerLink: { color: ACCENT, fontSize: 13, fontWeight: "700" },
+  workerBannerContent: { flexDirection: "row", gap: 14, alignItems: "center" },
+  workerBannerTitle:   { color: WHITE, fontSize: 15, fontWeight: "800" },
+  workerBannerSub:     { color: "rgba(186,214,235,0.7)", fontSize: 12, marginTop: 2 },
+  workerBannerLink:    { color: SKY, fontSize: 13, fontWeight: "700" },
 
   sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 22,
-    marginTop: 30,
-    marginBottom: 15,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 22, marginTop: 28, marginBottom: 12,
   },
-  sectionTitle: {
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  sectionAccent: { color: ACCENT, fontSize: 13, fontWeight: "600" },
+  sectionTitle:  { color: MUTED, fontSize: 11, fontWeight: "800", letterSpacing: 1.5 },
+  sectionAccent: { color: NAVY, fontSize: 13, fontWeight: "700" },
+
   activityCard: {
-    marginHorizontal: 22,
-    backgroundColor: SURFACE,
-    borderRadius: 24,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: BORDER,
+    marginHorizontal: 22, backgroundColor: WHITE, borderRadius: 24,
+    padding: 8, borderWidth: 1, borderColor: BORDER,
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   requestRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    gap: 15,
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
+    flexDirection: "row", alignItems: "center", padding: 12, gap: 14,
     borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  reqTitle: { color: TEXT, fontSize: 15, fontWeight: "700" },
-  reqSub: { color: MUTED, fontSize: 12, marginTop: 2 },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.03)",
-  },
-  statusText: { fontSize: 10, fontWeight: "800" },
-  emptyState: { padding: 40, alignItems: "center" },
-  emptyText: { color: MUTED, fontSize: 14 },
-  actionsGrid: {
-    flexDirection: "row",
-    paddingHorizontal: 22,
-    gap: 12,
-    marginTop: 15,
-  },
+  iconBox: { width: 48, height: 48, borderRadius: 16, justifyContent: "center", alignItems: "center" },
+  reqTitle:  { color: INK, fontSize: 15, fontWeight: "700" },
+  reqSub:    { color: MUTED, fontSize: 12, marginTop: 2 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusText:  { fontSize: 10, fontWeight: "800" },
+  emptyState:  { padding: 40, alignItems: "center" },
+  emptyText:   { color: MUTED, fontSize: 14 },
+
+  actionsGrid: { flexDirection: "row", paddingHorizontal: 22, gap: 12, marginTop: 14 },
   actionItem: {
-    flex: 1,
-    backgroundColor: SURFACE_MID,
-    padding: 16,
-    borderRadius: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: BORDER,
+    flex: 1, backgroundColor: WHITE, padding: 16, borderRadius: 20,
+    alignItems: "center", borderWidth: 1, borderColor: BORDER,
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  actionTitle: { color: TEXT, fontSize: 13, fontWeight: "700" },
-  actionSub: { color: MUTED, fontSize: 10, marginTop: 2 },
+  actionTitle: { color: INK, fontSize: 13, fontWeight: "700" },
+  actionSub:   { color: MUTED, fontSize: 10, marginTop: 2 },
+
   logoutBtn: {
-    marginHorizontal: 22,
-    marginTop: 30,
-    paddingVertical: 18,
-    borderRadius: 20,
-    backgroundColor: DANGER_DIM,
-    borderWidth: 1,
-    borderColor: DANGER_BDR,
-    alignItems: "center",
+    marginHorizontal: 22, marginTop: 28, paddingVertical: 18,
+    borderRadius: 20, backgroundColor: DANGER_DIM,
+    borderWidth: 1, borderColor: DANGER_BDR, alignItems: "center",
   },
   logoutText: { color: DANGER, fontSize: 15, fontWeight: "700" },
+
+  helpCard: {
+    marginHorizontal: 22, marginTop: 10,
+    backgroundColor: WHITE, padding: 16, borderRadius: 16,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  helpTitle: { color: INK, fontWeight: "700", fontSize: 14 },
+  helpSub:   { color: MUTED, fontSize: 12, marginTop: 4 },
 });
