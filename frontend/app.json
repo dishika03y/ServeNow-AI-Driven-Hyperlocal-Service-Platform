@@ -3,14 +3,18 @@
     "name": "ServeNow Worker",
     "slug": "servenow-worker",
     "version": "1.0.0",
+    "jsEngine": "hermes",
     "orientation": "portrait",
     "platforms": ["ios", "android", "web"],
-
     "android": {
       "package": "com.servenow.worker",
-      "permissions": ["CAMERA"]
+      "permissions": ["CAMERA"],
+      "jsEngine": "hermes"
     },
-
-    "assetBundlePatterns": ["**/*"]
+    "ios": {
+      "jsEngine": "hermes"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "plugins": ["expo-router"]
   }
 }
