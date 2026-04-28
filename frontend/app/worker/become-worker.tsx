@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  
   Alert,
   StatusBar,
 } from 'react-native';
@@ -212,7 +213,7 @@ export default function BecomeWorkerForm() {
       bankDetails: { accountNumber: '0000000000', ifscCode: 'TEST0000', upiId: 'test@upi' },
     };
     try {
-      const res = await apiRequest('/workers/apply', 'POST', payload);
+      await apiRequest('/workers/apply', 'POST', payload);
       Alert.alert('Profile Submitted!', 'Your worker profile is under review.', [
         { text: 'Go to Dashboard', onPress: () => router.push('/worker/verification') },
       ]);
