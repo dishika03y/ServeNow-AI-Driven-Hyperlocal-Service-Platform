@@ -85,7 +85,6 @@ export default function WorkerTabsLayout() {
       <Tabs.Screen name="schedule" options={{ href: null }} />
       <Tabs.Screen name="notification" options={{ href: null }} />
       <Tabs.Screen name="verification" options={{ href: null }} />
-      <Tabs.Screen name="Becomeworkerform" options={{ href: null }} />
     </Tabs>
   );
 }
