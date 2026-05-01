@@ -171,30 +171,39 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!phone || !password) {
-      setError(!phone ? "Please enter your phone number." : "Please enter your password.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const data = await apiRequest("/auth/login", "POST", { phone, password });
-      if (data && data.access_token) {
-        await AsyncStorage.setItem("access_token", data.access_token);
-        if (data.refresh_token) {
-          await AsyncStorage.setItem("refresh_token", data.refresh_token);
-        }
-        router.replace("/(tabs)/home");
-      } else {
-        setError("Login failed: Server response was incomplete.");
+  if (!phone || !password) {
+    setError(!phone ? "Please enter your phone number." : "Please enter your password.");
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+
+  try {
+    const data = await apiRequest("/auth/login", "POST", {
+      phone,
+      password,
+    });
+
+    if (data?.access_token) {
+      await AsyncStorage.setItem("access_token", data.access_token);
+
+      if (data.refresh_token) {
+        await AsyncStorage.setItem("refresh_token", data.refresh_token);
       }
-    } catch (err: any) {
-      const msg = err.response?.data?.detail;
-      setError(typeof msg === "string" ? msg : "Invalid phone or password.");
-    } finally {
-      setLoading(false);
+
+      // 🔥 DIRECT HOME
+      router.replace("/(tabs)/home");
+    } else {
+      setError("Login failed");
     }
-  };
+  } catch (err: any) {
+    const msg = err.response?.data?.detail;
+    setError(typeof msg === "string" ? msg : "Invalid phone or password.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <View style={styles.root}>
