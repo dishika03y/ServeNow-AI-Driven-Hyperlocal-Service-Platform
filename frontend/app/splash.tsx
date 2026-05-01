@@ -119,16 +119,23 @@ export default function Splash() {
 
     // 🔥 REAL LOGIN CHECK
     const checkAuth = async () => {
-      const token = await AsyncStorage.getItem("access_token");
+  const token = await AsyncStorage.getItem("access_token");
+  const role = await AsyncStorage.getItem("role"); // 👈 ADD THIS
 
-      setTimeout(() => {
-        if (token) {
-          router.replace("/(tabs)/home");
-        } else {
-          router.replace("/auth/login");
-        }
-      }, 2000);
-    };
+  setTimeout(() => {
+    if (token) {
+      if (role === "admin") {
+        router.replace("/admin/dashboard");
+      } else if (role === "worker") {
+        router.replace("/worker/home");
+      } else {
+        router.replace("/(tabs)/home");
+      }
+    } else {
+      router.replace("/auth/login");
+    }
+  }, 2000);
+};
 
     checkAuth();
   }, []);

@@ -186,15 +186,26 @@ export default function LoginScreen() {
     });
 
     if (data?.access_token) {
-      await AsyncStorage.setItem("access_token", data.access_token);
+  await AsyncStorage.setItem("access_token", data.access_token);
 
-      if (data.refresh_token) {
-        await AsyncStorage.setItem("refresh_token", data.refresh_token);
-      }
+  if (data.refresh_token) {
+    await AsyncStorage.setItem("refresh_token", data.refresh_token);
+  }
 
-      // 🔥 DIRECT HOME
-      router.replace("/(tabs)/home");
-    } else {
+  // ✅ SAVE ROLE
+  if (data.role) {
+    await AsyncStorage.setItem("role", data.role);
+  }
+
+  // ✅ ROLE BASED REDIRECT
+  if (data.role === "admin") {
+    router.replace("/admin/dashboard");
+  } else if (data.role === "worker") {
+    router.replace("/worker/home");
+  } else {
+    router.replace("/(tabs)/home");
+  }
+} else {
       setError("Login failed");
     }
   } catch (err: any) {
