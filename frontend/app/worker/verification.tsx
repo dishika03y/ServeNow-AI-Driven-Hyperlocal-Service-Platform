@@ -116,15 +116,13 @@ const verifyAadharAPI = async () => {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
     },
-    body: JSON.stringify({}),
   });
 
   const data = await safeJson(res);
 
-  console.log("STATUS:", res.status);
-  console.log("DATA:", data);
+  console.log("AADHAAR STATUS:", res.status);
+  console.log("AADHAAR DATA:", data);
 
   return {
     ok: res.ok,
@@ -140,9 +138,17 @@ const verifyFaceAPI = async () => {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-  });
+  }); 
 
-  return res.json();
+  const data = await safeJson(res);
+
+  console.log("FACE STATUS:", res.status);
+  console.log("FACE DATA:", data);
+
+  return {
+    ok: res.ok,
+    data,
+  };
 };
 // ─── Doc Card ─────────────────────────────────────────────────────────────────
 function DocCard({ slot, data, onTap, onRetake }: { slot: DocSlot; data?: DocData; onTap: () => void; onRetake: () => void }) {
@@ -304,19 +310,25 @@ export default function VerificationScreen() {
     const aadharRes = await verifyAadharAPI();
     console.log("Aadhar:", aadharRes);
 
-    if (!aadharRes.success) {
-      Alert.alert("Error", "Aadhaar verification failed");
-      return;
-    }
+    if (!aadharRes.ok) {
+  Alert.alert(
+    "Error",
+    aadharRes.data?.message || aadharRes.data?.detail || "Aadhaar verification failed"
+  );
+  return;
+}
 
     // 🔹 Step 3: Face Verification
     const faceRes = await verifyFaceAPI();
     console.log("Face:", faceRes);
 
-    if (!faceRes.success) {
-      Alert.alert("Error", "Face verification failed");
-      return;
-    }
+  if (!faceRes.ok) {
+  Alert.alert(
+    "Error",
+    faceRes.data?.message || "Face verification failed"
+  );
+  return;
+}
 
     // ✅ SUCCESS FLOW
     Alert.alert("Success", "Verification submitted successfully!");
