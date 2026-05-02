@@ -10,6 +10,15 @@ class BankDetailsSchema(BaseModel):
     ifscCode: str
     upiId: Optional[str] = None
 
+class WorkerProfileResponse(BaseModel):
+    id: str
+    fullName: str
+    phone: str
+    serviceCategory: Optional[str]
+    experienceYears: Optional[int]
+    isLive: bool
+    status: str
+
 class WorkerApplySchema(BaseModel):
     serviceCategory: str  
     subCategories: List[str] 

@@ -15,6 +15,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFi
 from bson import ObjectId
 from datetime import datetime
 
+from fastapi import BackgroundTasks
+
+from app.schemas.workers_schemas import WorkerProfileResponse
+
 router = APIRouter(
     prefix="/workers",
     tags=["Workers"],
@@ -65,7 +69,9 @@ def upload_documents(
     portfolio_2: UploadFile = File(None),
     current_user=Depends(get_current_user)
 ):
-    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1
+    })
     if not worker:
         raise HTTPException(404, "Application not found")
 
@@ -93,7 +99,10 @@ def upload_documents(
 @router.post("/verify-aadhaar")
 def verify_aadhaar(current_user=Depends(get_current_user)):
 
-    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "documents": 1
+    })
 
     if not worker or "documents" not in worker:
         raise HTTPException(status_code=400, detail="Documents not uploaded")
@@ -131,10 +140,26 @@ def verify_aadhaar(current_user=Depends(get_current_user)):
         "data": final_data
     }
 
+def run_face_verification(aadhaar_url, selfie_url, worker_id):
+    result = compare_faces(aadhaar_url, selfie_url)
+
+    worker_collection.update_one(
+        {"_id": worker_id},
+        {
+            "$set": {
+                "faceMatch": result,
+                "verificationStage": "FACE_COMPLETED"
+            }
+        }
+    )
+
 @router.post("/verify-face")
-def verify_face(current_user=Depends(get_current_user)):
+def verify_face(background_tasks: BackgroundTasks, current_user=Depends(get_current_user)):
     # 1. Find the worker in DB
-    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "documents": 1
+    })
 
     if not worker or "documents" not in worker:
         raise HTTPException(status_code=400, detail="Documents not uploaded")
@@ -143,27 +168,10 @@ def verify_face(current_user=Depends(get_current_user)):
     aadhaar_url = worker["documents"]["aadhaarFront"]
     selfie_url = worker["documents"]["selfieImage"]
 
-    # 3. RUN IT DIRECTLY (The API will wait here until it's done)
     try:
         print("Starting Face Match... please wait...")
-        result = compare_faces(aadhaar_url, selfie_url)
-        print(f"Match Result: {result}")
-
-        # 4. Update the database immediately
-        worker_collection.update_one(
-            {"_id": worker["_id"]},
-            {
-                "$set": {
-                    "faceMatch": result,
-                    "verificationStage": "FACE_COMPLETED"
-                }
-            }
-        )
-
-        return {
-            "message": "Face verification completed",
-            "data": result
-        }
+        background_tasks.add_task(run_face_verification, aadhaar_url, selfie_url, worker["_id"])
+        return {"message": "Processing in background"}
 
     except Exception as e:
         print(f"Face Error: {str(e)}")
@@ -171,7 +179,13 @@ def verify_face(current_user=Depends(get_current_user)):
     
 @router.get("/status")
 def get_verification_status(current_user=Depends(get_current_user)):
-    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "verificationStage": 1,
+        "faceMatch": 1,
+        "aadhaarData": 1,
+        "status": 1
+    })
     if not worker:
         raise HTTPException(status_code=404, detail="Worker application not found")
     
@@ -184,7 +198,11 @@ def get_verification_status(current_user=Depends(get_current_user)):
 
 @router.post("/final-verify")
 def final_verify(current_user=Depends(get_current_user)):
-    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "aadhaarData": 1,
+        "faceMatch": 1
+    })
     
     aadhaar_data = worker.get("aadhaarData")
     face_data = worker.get("faceMatch")
@@ -233,9 +251,12 @@ def reset_application(current_user=Depends(get_current_user)):
         raise HTTPException(400, "Cannot reset application at this stage")
     return {"message": "Application reset. You can apply again."}
 
-@router.get("/me")
+@router.get("/me", response_model=WorkerProfileResponse)
 def get_worker_profile(current_user=Depends(get_current_user)):
-    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "userId": 1
+    })
 
     if not worker:
         raise HTTPException(status_code=404, detail="Worker not found")
@@ -243,5 +264,13 @@ def get_worker_profile(current_user=Depends(get_current_user)):
     worker["_id"] = str(worker["_id"])
     worker["userId"] = str(worker["userId"])
 
-    return worker
+    return {
+        "id": worker["_id"],
+        "fullName": worker.get("fullName"),
+        "phone": worker.get("phone"),
+        "serviceCategory": worker.get("serviceCategory"),
+        "experienceYears": worker.get("experienceYears"),
+        "isLive": worker.get("isLive", False),
+        "status": worker.get("status", "PENDING")
+    }
     

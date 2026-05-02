@@ -25,7 +25,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
         user_id = payload.get("sub")
 
-        user = user_collection.find_one({"_id": ObjectId(user_id)})
+        user = user_collection.find_one({"_id": ObjectId(user_id)},{
+            "_id": 1,
+            "fullName": 1,
+            "phone": 1,
+            "email": 1,
+            "city": 1,
+            "pincode": 1,
+            "role": 1
+        })
 
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
@@ -39,7 +47,16 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 @router.get("/me", summary="Get logged-in user profile")
 def get_profile(current_user=Depends(get_current_user)):
 
-    worker = worker_collection.find_one({"userId": current_user["_id"]})
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "status": 1,
+        "verificationStage": 1,
+        "isLive": 1
+    })
+    is_worker = False
+
+    if worker and worker.get("status") == "approved":
+        is_worker = True
 
     return {
         "id": str(current_user["_id"]),
@@ -51,7 +68,10 @@ def get_profile(current_user=Depends(get_current_user)):
         "role": current_user.get("role", "USER"),
 
 
-        "is_worker": True if worker else False
+        "is_worker": is_worker,
+
+        "worker_status": worker.get("status") if worker else None,
+        "verification_stage": worker.get("verificationStage") if worker else None
     }
 
 @router.put("/me", summary="Update logged-in user profile")
@@ -60,7 +80,13 @@ def update_profile(
     current_user=Depends(get_current_user)
 ):
 
-    result = update_user_profile(current_user["phone"], data.dict())
+    result = update_user_profile(current_user["phone"], data.dict(),{
+        "fullName": 1,
+        "phone": 1,
+        "email": 1,
+        "city": 1,
+        "pincode": 1
+    })
 
     if not result:
         raise HTTPException(
