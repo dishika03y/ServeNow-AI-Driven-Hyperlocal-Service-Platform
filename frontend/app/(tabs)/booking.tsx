@@ -1,407 +1,333 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
 import React from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 
-const NAVY        = '#0B2239';
-const NAVY_MID    = '#163552';
-const ACCENT      = '#00D68F';
-const ACCENT_DIM  = 'rgba(0,214,143,0.12)';
-const ACCENT_BDR  = 'rgba(0,214,143,0.25)';
-const WARM        = '#FF8C42';
-const WARM_DIM    = 'rgba(255,140,66,0.10)';
-const WARM_BDR    = 'rgba(255,140,66,0.25)';
-const DANGER      = '#FF4D4D';
-const DANGER_DIM  = 'rgba(255,77,77,0.10)';
-const DANGER_BDR  = 'rgba(255,77,77,0.22)';
-const SURFACE     = 'rgba(255,255,255,0.04)';
-const SURFACE_MID = 'rgba(255,255,255,0.07)';
-const BORDER      = 'rgba(255,255,255,0.08)';
-const TEXT        = '#EEF4FA';
-const MUTED       = 'rgba(200,220,235,0.55)';
+interface Booking {
+  id: string;
+  service: string;
+  date: string;
+  status: string;
+  subtitle: string;
+}
 
-const SERVICE_EMOJI: Record<string, string> = {
-  'Plumbing':      '🔧',
-  'Electrician':   '⚡',
+const historyData: Booking[] = [
+  {
+    id: '1',
+    service: 'Home Cleaning',
+    date: '02 Feb 2026',
+    status: 'Completed',
+    subtitle: 'Full home clean',
+  },
+  {
+    id: '2',
+    service: 'Plumber',
+    date: '25 Jan 2026',
+    status: 'Cancelled',
+    subtitle: 'Pipes & leaks',
+  },
+  {
+    id: '3',
+    service: 'Electrician',
+    date: '15 Jan 2026',
+    status: 'Completed',
+    subtitle: 'Wiring & repairs',
+  },
+];
+
+const icons: Record<string, string> = {
   'Home Cleaning': '🧹',
-  'AC Repair':     '❄️',
-  'Carpenter':     '🪚',
-  'Painter':       '🖌️',
+  Plumber: '🔧',
+  Electrician: '⚡',
 };
 
-const dummyBooking = {
-  bookingId:    'B12345',
-  serviceName:  'Plumbing',
-  providerName: 'John Doe',
-  date:         '2026-02-03',
-  time:         '10:30 AM',
-  address:      '123 Main Street, City',
-  price:        '₹500',
-  status:       'Completed',
-};
-
-const BookingDetail: React.FC = () => {
+const HistoryScreen = () => {
   const router = useRouter();
-  const { bookingId, serviceName, providerName, date, time, address, price, status } = dummyBooking;
 
-  const isCompleted = status === 'Completed';
-  const isPending   = status === 'Pending';
+  const completed = historyData.filter(
+    item => item.status === 'Completed',
+  ).length;
 
-  const statusColor = isCompleted ? ACCENT
-    : isPending ? WARM
-    : DANGER;
-  const statusDim   = isCompleted ? ACCENT_DIM  : isPending ? WARM_DIM  : DANGER_DIM;
-  const statusBdr   = isCompleted ? ACCENT_BDR  : isPending ? WARM_BDR  : DANGER_BDR;
+  const cancelled = historyData.filter(
+    item => item.status === 'Cancelled',
+  ).length;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.appLabel}>WorkerOS</Text>
-        <View style={{ width: 36 }} />
+    <View style={styles.container}>
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.smallText}>SERVENOW</Text>
+
+        <Text style={styles.title}>
+          My Bookings
+        </Text>
+
+        <Text style={styles.subtitle}>
+          Premium services at your doorstep.
+        </Text>
       </View>
 
-      {/* Hero Card */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroIconWrap}>
-          <Text style={styles.heroEmoji}>
-            {SERVICE_EMOJI[serviceName] ?? '🛠️'}
+
+      {/* Search */}
+      <View style={styles.searchBox}>
+        <TextInput
+          placeholder='Search bookings...'
+          placeholderTextColor='#A5AAB5'
+        />
+      </View>
+
+
+      {/* Stats */}
+      <View style={styles.statsRow}>
+
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>
+            {historyData.length}
+          </Text>
+
+          <Text style={styles.statLabel}>
+            Total
           </Text>
         </View>
-        <Text style={styles.heroService}>{serviceName}</Text>
-        <Text style={styles.heroProvider}>by {providerName}</Text>
 
-        {/* Status badge */}
-        <View style={[styles.statusBadge, { backgroundColor: statusDim, borderColor: statusBdr }]}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>{status}</Text>
+
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>
+            {completed}
+          </Text>
+
+          <Text style={styles.statLabel}>
+            Completed
+          </Text>
         </View>
-      </View>
 
-      {/* Booking ID strip */}
-      <View style={styles.idStrip}>
-        <Text style={styles.idLabel}>BOOKING ID</Text>
-        <Text style={styles.idValue}>{bookingId}</Text>
-      </View>
 
-      {/* Details Card */}
-      <View style={styles.detailCard}>
-        <DetailRow icon="📅" label="Date & Time" value={`${date}  ·  ${time}`} />
-        <Divider />
-        <DetailRow icon="📍" label="Address" value={address} />
-        <Divider />
-        <DetailRow icon="💰" label="Total Price" value={price} accent />
-      </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>
+            {cancelled}
+          </Text>
 
-      {/* Provider Card */}
-      <View style={styles.detailCard}>
-        <View style={styles.providerRow}>
-          <View style={styles.providerAvatar}>
-            <Text style={styles.providerInitials}>
-              {providerName.split(' ').map((n) => n[0]).join('')}
-            </Text>
-          </View>
-          <View style={styles.providerInfo}>
-            <Text style={styles.providerLabel}>SERVICE PROVIDER</Text>
-            <Text style={styles.providerName}>{providerName}</Text>
-          </View>
-          <TouchableOpacity style={styles.contactBtn} activeOpacity={0.75}>
-            <Text style={styles.contactBtnText}>Contact</Text>
-          </TouchableOpacity>
+          <Text style={styles.statLabel}>
+            Cancelled
+          </Text>
         </View>
+
       </View>
 
-      {/* CTA */}
-      {!isCompleted && (
-        <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.8}>
-          <Text style={styles.cancelBtnText}>Cancel Booking</Text>
-        </TouchableOpacity>
-      )}
-      {isCompleted && (
-        <TouchableOpacity style={styles.reviewBtn} activeOpacity={0.8}>
-          <Text style={styles.reviewBtnText}>Leave a Review</Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+
+      {/* List */}
+      <FlatList
+        data={historyData}
+        showsVerticalScrollIndicator={false}
+        keyExtractor={item => item.id}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        renderItem={({ item }) => {
+
+          const completed =
+            item.status === 'Completed';
+
+          return (
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: '/booking-detail',
+                  params: {
+                    bookingId: item.id,
+                  },
+                })
+              }
+            >
+
+              <View style={styles.iconBox}>
+                <Text style={styles.icon}>
+                  {icons[item.service]}
+                </Text>
+              </View>
+
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.service}>
+                  {item.service}
+                </Text>
+
+                <Text style={styles.serviceSub}>
+                  {item.subtitle}
+                </Text>
+
+                <Text style={styles.date}>
+                  {item.date}
+                </Text>
+              </View>
+
+
+              <View
+                style={[
+                  styles.badge,
+                  completed
+                    ? styles.completed
+                    : styles.cancelled,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    {
+                      color: completed
+                        ? '#00994D'
+                        : '#E53935',
+                    },
+                  ]}
+                >
+                  {item.status}
+                </Text>
+              </View>
+
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </View>
   );
 };
 
-// Sub-components
-function DetailRow({
-  icon, label, value, accent,
-}: {
-  icon: string; label: string; value: string; accent?: boolean;
-}) {
-  return (
-    <View style={rowStyles.row}>
-      <Text style={rowStyles.icon}>{icon}</Text>
-      <View style={rowStyles.body}>
-        <Text style={rowStyles.label}>{label}</Text>
-        <Text style={[rowStyles.value, accent && rowStyles.accentValue]}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-function Divider() {
-  return <View style={{ height: 1, backgroundColor: BORDER, marginVertical: 4 }} />;
-}
-
-const rowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 12,
-  },
-  icon: { fontSize: 16, marginTop: 1 },
-  body: { flex: 1 },
-  label: {
-    color: MUTED,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    marginBottom: 3,
-  },
-  value: {
-    color: TEXT,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 20,
-  },
-  accentValue: {
-    color: ACCENT,
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-});
-
-export default BookingDetail;
+export default HistoryScreen;
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: NAVY,
-  },
-  scrollContent: {
-    paddingBottom: 48,
+    backgroundColor: '#F8F6F2',
+    paddingHorizontal: 20,
+    paddingTop: 55,
   },
 
-  // TOP BAR
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingTop: 52,
-    paddingBottom: 10,
+  header: {
+    marginBottom: 20,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: SURFACE_MID,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  smallText: {
+    color: '#0B2A56',
+    fontWeight: '600',
+    fontSize: 12,
+    letterSpacing: 2,
   },
-  backIcon: {
-    color: TEXT,
-    fontSize: 22,
-    lineHeight: 24,
-    fontWeight: '300',
-  },
-  appLabel: {
-    color: MUTED,
-    fontSize: 11,
+
+  title: {
+    color: '#0B2A56',
+    fontSize: 34,
     fontWeight: '700',
-    letterSpacing: 2.5,
-    textTransform: 'uppercase',
+    marginTop: 10,
   },
 
-  // HERO CARD
-  heroCard: {
-    marginHorizontal: 22,
-    marginTop: 12,
-    backgroundColor: NAVY_MID,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    gap: 6,
+  subtitle: {
+    color: '#8B9098',
+    marginTop: 6,
   },
-  heroIconWrap: {
-    width: 64,
-    height: 64,
+
+  searchBox: {
+    backgroundColor: 'white',
     borderRadius: 18,
-    backgroundColor: SURFACE_MID,
-    borderWidth: 1,
-    borderColor: BORDER,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  heroEmoji: { fontSize: 28 },
-  heroService: {
-    color: TEXT,
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  heroProvider: {
-    color: MUTED,
-    fontSize: 13,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    marginTop: 8,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginBottom: 20,
+    elevation: 2,
   },
 
-  // BOOKING ID STRIP
-  idStrip: {
+  statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 25,
+  },
+
+  statCard: {
+    width: '31%',
+    backgroundColor: 'white',
+    borderRadius: 18,
+    paddingVertical: 18,
     alignItems: 'center',
-    marginHorizontal: 22,
-    marginTop: 14,
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  idLabel: {
-    color: MUTED,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.8,
-  },
-  idValue: {
-    color: TEXT,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    elevation: 2,
   },
 
-  // DETAIL CARD
-  detailCard: {
-    marginHorizontal: 22,
-    marginTop: 12,
-    backgroundColor: SURFACE,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 16,
-    paddingHorizontal: 16,
+  statNumber: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0B2A56',
   },
 
-  // PROVIDER
-  providerRow: {
+  statLabel: {
+    marginTop: 5,
+    color: '#8B9098',
+    fontSize: 12,
+  },
+
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-  },
-  providerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: ACCENT_DIM,
-    borderWidth: 1,
-    borderColor: ACCENT_BDR,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  providerInitials: {
-    color: ACCENT,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  providerInfo: { flex: 1 },
-  providerLabel: {
-    color: MUTED,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    marginBottom: 3,
-  },
-  providerName: {
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  contactBtn: {
-    backgroundColor: SURFACE_MID,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 10,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-  },
-  contactBtnText: {
-    color: TEXT,
-    fontSize: 12,
-    fontWeight: '600',
+    marginBottom: 16,
+    elevation: 2,
   },
 
-  // CTAs
-  reviewBtn: {
-    marginHorizontal: 22,
-    marginTop: 18,
-    backgroundColor: ACCENT,
-    borderRadius: 14,
-    paddingVertical: 16,
+  iconBox: {
+    width: 55,
+    height: 55,
+    borderRadius: 18,
+    backgroundColor: '#F4F5F8',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 15,
   },
-  reviewBtnText: {
-    color: NAVY,
-    fontSize: 15,
+
+  icon: {
+    fontSize: 24,
+  },
+
+  service: {
+    color: '#0B2A56',
     fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize: 17,
   },
-  cancelBtn: {
-    marginHorizontal: 22,
-    marginTop: 18,
-    backgroundColor: DANGER_DIM,
-    borderWidth: 1,
-    borderColor: DANGER_BDR,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
+
+  serviceSub: {
+    color: '#8B9098',
+    marginTop: 3,
+    fontSize: 13,
   },
-  cancelBtnText: {
-    color: DANGER,
-    fontSize: 15,
+
+  date: {
+    color: '#B0B5BE',
+    marginTop: 4,
+    fontSize: 12,
+  },
+
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+
+  completed: {
+    backgroundColor: '#E8FFF2',
+  },
+
+  cancelled: {
+    backgroundColor: '#FFF1F1',
+  },
+
+  badgeText: {
     fontWeight: '600',
+    fontSize: 12,
   },
+
 });

@@ -9,12 +9,15 @@ import {
   RefreshControl,
   StatusBar,
   Dimensions,
+  Animated,
+  Easing,
 } from "react-native";
 import { router } from "expo-router";
 import React, { useState, useEffect, useCallback } from "react";
-import { apiRequest } from "@/src/api/api";
+import { apiRequest } from "../../src/api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path, Circle, Rect, Polyline, Line } from "react-native-svg";
+import FloatingSupport from "../../src/components/shared/FloatingSupport";
 
 const { width } = Dimensions.get("window");
 
@@ -225,6 +228,7 @@ export default function HomeScreen() {
   // }
 
   if (!isAuthenticated) return null;
+  
 
   return (
     <View style={styles.root}>
@@ -345,6 +349,7 @@ export default function HomeScreen() {
           <Text style={styles.trustText}>1M+ users</Text>
         </View>
       </ScrollView>
+      <FloatingSupport />
     </View>
   );
 }

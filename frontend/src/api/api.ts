@@ -167,4 +167,9 @@ const applyWorker = async (payload: any) => {
     throw err;
   }
 }
+
+export const getUserBookings = async () => {
+  return apiRequest("/jobs/me");
+};
+
 export default API;

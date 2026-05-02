@@ -1,81 +1,86 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { View, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
-const NAVY = "#0B2239";
-const NAVY_MID = "#163552";
-const ACCENT = "#00D68F";
-const MUTED = "rgba(200,220,235,0.45)";
-const BORDER = "rgba(255,255,255,0.08)";
+const PRIMARY = "#0A4D8C"; // worker blue
+const INACTIVE = "#6B7280";
+const BG = "#FFFFFF";
 
 export default function Layout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: ACCENT,
-        tabBarInactiveTintColor: MUTED,
+
         tabBarStyle: {
-          backgroundColor: NAVY_MID,
+          backgroundColor: BG,
+          height: 78,
           borderTopWidth: 1,
-          borderTopColor: BORDER,
-          height: 70,
-          paddingBottom: 10,
+          borderTopColor: "#E5E7EB",
           paddingTop: 8,
-          elevation: 0,
-          shadowOpacity: 0,
+          paddingBottom: 10,
         },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-          letterSpacing: 0.4,
-          marginTop: 2,
+
+        tabBarShowLabel: false,
+
+        tabBarItemStyle: {
+          alignItems: "center",
+          justifyContent: "center",
         },
       }}
     >
+      {/* HOME */}
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="home" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <BottomTab
+              icon={focused ? "home" : "home-outline"}
+              label="Home"
+              focused={focused}
+            />
           ),
         }}
       />
+
+      {/* SERVICES */}
       <Tabs.Screen
-        name="history"
+        name="All Services"
         options={{
-          title: "History",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="time" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <BottomTab
+              icon={focused ? "construct" : "construct-outline"}
+              label="Services"
+              focused={focused}
+            />
           ),
         }}
       />
+
+      {/* BOOKINGS */}
       <Tabs.Screen
         name="booking"
         options={{
-          title: "Booking",
-          tabBarIcon: ({ color, focused }) => (
-            <BookingTabIcon focused={focused} />
-          ),
-          tabBarLabel: () => null,
-        }}
-      />
-      <Tabs.Screen
-        name="payment"
-        options={{
-          title: "Payment",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="card" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <BottomTab
+              icon={focused ? "clipboard" : "clipboard-outline"}
+              label="Bookings"
+              focused={focused}
+            />
           ),
         }}
       />
+
+      {/* PROFILE */}
       <Tabs.Screen
-        name="support"
+        name="User-profile"
         options={{
-          title: "Support",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="chatbubbles" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <BottomTab
+              icon={focused ? "person" : "person-outline"}
+              label="Profile"
+              focused={focused}
+            />
           ),
         }}
       />
@@ -83,60 +88,57 @@ export default function Layout() {
   );
 }
 
-// Components remain the same as your original file
-function TabIcon({
-  name,
-  color,
+function BottomTab({
+  icon,
+  label,
   focused,
 }: {
-  name: any;
-  color: string;
+  icon: any;
+  label: string;
   focused: boolean;
 }) {
-  const iconName = focused ? name : `${name}-outline`;
   return (
-    <View style={tabIconStyles.wrapper}>
-      <Ionicons name={iconName} size={22} color={color} />
-      {focused && <View style={tabIconStyles.dot} />}
+    <View style={styles.container}>
+      <Ionicons
+        name={icon}
+        size={24}
+        color={focused ? PRIMARY : INACTIVE}
+      />
+
+      <Text
+        style={[
+          styles.label,
+          {
+            color: focused ? PRIMARY : INACTIVE,
+            fontWeight: focused ? "700" : "500",
+          },
+        ]}
+      >
+        {label}
+      </Text>
+
+      {focused && <View style={styles.activeLine} />}
     </View>
   );
 }
 
-function BookingTabIcon({ focused }: { focused: boolean }) {
-  return (
-    <View style={bookingStyles.container}>
-      <View style={[bookingStyles.pill, focused && bookingStyles.pillActive]}>
-        <Ionicons
-          name={focused ? "document-text" : "document-text-outline"}
-          size={22}
-          color={focused ? NAVY : MUTED}
-        />
-      </View>
-    </View>
-  );
-}
-
-const tabIconStyles = StyleSheet.create({
-  wrapper: { alignItems: "center", justifyContent: "center", gap: 4 },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: ACCENT },
-});
-
-const bookingStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
+    minWidth: 70,
   },
-  pill: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 8,
+
+  label: {
+    fontSize: 11,
+    marginTop: 4,
   },
-  pillActive: { backgroundColor: ACCENT, borderColor: ACCENT },
+
+  activeLine: {
+    marginTop: 4,
+    width: 22,
+    height: 3,
+    borderRadius: 10,
+    backgroundColor: PRIMARY,
+  },
 });
