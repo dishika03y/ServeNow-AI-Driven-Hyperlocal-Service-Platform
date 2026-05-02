@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.services.job_service import create_job, get_user_jobs, update_job_status, get_all_jobs
 from app.core.security import get_current_user
+from app.services.job_service import assign_worker, get_worker_jobs
 
 router = APIRouter()
 
