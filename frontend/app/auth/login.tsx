@@ -170,7 +170,7 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+ const handleLogin = async () => {
   if (!phone || !password) {
     setError(!phone ? "Please enter your phone number." : "Please enter your password.");
     return;
@@ -186,26 +186,34 @@ export default function LoginScreen() {
     });
 
     if (data?.access_token) {
-  await AsyncStorage.setItem("access_token", data.access_token);
+      const token = data.access_token;
 
-  if (data.refresh_token) {
-    await AsyncStorage.setItem("refresh_token", data.refresh_token);
-  }
+      await AsyncStorage.setItem("access_token", token);
 
-  // ✅ SAVE ROLE
-  if (data.role) {
-    await AsyncStorage.setItem("role", data.role);
-  }
+      if (data.refresh_token) {
+        await AsyncStorage.setItem("refresh_token", data.refresh_token);
+      }
 
-  // ✅ ROLE BASED REDIRECT
-  if (data.role === "admin") {
-    router.replace("/admin/dashboard");
-  } else if (data.role === "worker") {
-    router.replace("/worker/home");
-  } else {
-    router.replace("/(tabs)/home");
-  }
+      if (data.role) {
+        await AsyncStorage.setItem("role", data.role);
+      }
+
+      // ✅ CALL /users/me API
+    // ✅ CALL /users/me
+const userData = await apiRequest("/users/me", "GET", null, {
+  Authorization: `Bearer ${token}`,
+});
+
+// ✅ DIRECT DECISION
+if (userData?.is_worker) {
+  router.replace("/(worker-tabs)/dashboard");
+} else if (userData?.role === "Admin") {
+  router.replace("/admin/dashboard");
 } else {
+  router.replace("/(tabs)/home");
+}
+
+    } else {
       setError("Login failed");
     }
   } catch (err: any) {

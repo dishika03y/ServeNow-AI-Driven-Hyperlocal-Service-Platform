@@ -37,7 +37,8 @@ export default function CustomerDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile]     = useState<any>(null);
   const [requests, setRequests]   = useState<any[]>([]);
-  const [isWorker, setIsWorker]   = useState(false);
+  const [isWorker, setIsWorker] = useState<boolean | "pending">(false);
+
 
   const fetchData = async () => {
     try {
@@ -46,10 +47,11 @@ export default function CustomerDashboard() {
         apiRequest("/users/me/requests", "GET"),
       ]);
       if (profileRes.status === "fulfilled") {
-        const user = profileRes.value;
-        setProfile(user);
-        setIsWorker(user?.is_worker === true);
-      }
+  const user = profileRes.value;
+  setProfile(user);
+
+  setIsWorker(user?.is_worker); // now can be true / false / "pending"
+}
       if (requestsRes.status === "fulfilled") {
         setRequests(requestsRes.value.data || []);
       }
@@ -61,20 +63,24 @@ export default function CustomerDashboard() {
     }
   };
 
-  const handleWorkerBannerPress = async () => {
-    try {
-      const workerProfile = await apiRequest("/workers/me", "GET");
-      if (workerProfile?.verificationStage === "BASIC_DETAILS_SUBMITTED") {
-        router.push("/worker/verification");
-      } else if (workerProfile?.verificationStage === "COMPLETED_AWAITING_REVIEW") {
-        Alert.alert("Under Review", "Your profile is under review.");
-      } else {
-        router.push("/worker/verification");
-      }
-    } catch {
+ const handleWorkerBannerPress = async () => {
+  try {
+    const user = await apiRequest("/users/me", "GET");
+
+    const status = user?.is_worker;
+
+    if (status === true) {
+      router.push("/(worker-tabs)/dashboard");
+    } else if (status === "pending") {
+      router.push("/worker/verification");
+    } else {
       router.push("/worker/become-worker");
     }
-  };
+
+  } catch (err) {
+    console.error("Worker Banner Error:", err);
+  }
+};
 
   useEffect(() => { fetchData(); }, []);
   const onRefresh = useCallback(() => { setRefreshing(true); fetchData(); }, []);
@@ -101,13 +107,13 @@ export default function CustomerDashboard() {
     ]);
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: "center" }]}>
-        <ActivityIndicator size="large" color={NAVY} />
-      </View>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <View style={[styles.container, { justifyContent: "center" }]}>
+  //       <ActivityIndicator size="large" color={NAVY} />
+  //     </View>
+  //   );
+  // }
 
   const initials =
     profile?.fullName?.split(" ").map((n: any) => n[0]).join("").toUpperCase() || "??";
@@ -152,7 +158,14 @@ export default function CustomerDashboard() {
         <View style={styles.workerBannerContent}>
           <Text style={{ fontSize: 26 }}>{isWorker ? "👷‍♂️" : "🚀"}</Text>
           <View>
-            <Text style={styles.workerBannerTitle}>{isWorker ? "Switch to Worker Mode" : "Become a Worker"}</Text>
+           <Text style={styles.workerBannerTitle}>
+  {isWorker === true
+    ? "Switch to Worker Mode"
+    : isWorker === "pending"
+    ? "Check Status"
+    : "Become a Worker"}
+</Text>
+
             <Text style={styles.workerBannerSub}>{isWorker ? "Manage jobs, earnings & profile" : "Start earning by offering services"}</Text>
           </View>
         </View>

@@ -17,7 +17,25 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Svg, { Path, Circle, Rect, Polyline } from 'react-native-svg';
 
+const C = {
+  navy: '#081F5C',
+  navyLight: '#081F5C14',
+  navyMid: '#081F5C40',
+  sky: '#BAD6EB',
+  skyMid: '#BAD6EB60',
+  cream: '#F7F2EB',
+  creamDark: '#EDE7DC',
+  creamBorder: '#E8E2D8',
+  white: '#FFFFFF',
+  error: '#991B1B',
+  errorBg: '#FEF2F2',
+  errorBorder: '#FECACA',
+  successBg: '#F0FDF4',
+  successBorder: '#BBF7D0',
+  success: '#166534',
+};
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DocKey = "aadhaar_front" | "aadhaar_back" | "selfie";
 type DocStatus = "pending" | "approved" | "rejected";
@@ -27,7 +45,7 @@ type DocsState = Partial<Record<DocKey, DocData>>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "kyc_docs";
-
+const BASE_URL = "https://serservenow-backend.onrender.com";
 const REQUIRED_DOCS: DocSlot[] = [
   { key: "aadhaar_front", label: "Aadhaar Front", hint: "Front side of your card", icon: "card-outline" },
   { key: "aadhaar_back",  label: "Aadhaar Back",  hint: "Back side of your card",  icon: "card-outline" },
@@ -46,6 +64,86 @@ const STATUS_CONFIG: Record<DocStatus, { label: string; color: string; bg: strin
   rejected: { label: "Rejected",       color: "#c0392b", bg: "#fdecea" },
 };
 
+const safeJson = async (res: Response) => {
+  const text = await res.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.log("Non-JSON response:", text);
+    return { message: text }; // fallback so app doesn't crash
+  }
+};
+const uploadDocumentsAPI = async (docs: DocsState) => {
+  const token = await AsyncStorage.getItem("access_token");
+
+  const formData = new FormData();
+
+  formData.append("aadhaar_front", {
+    uri: docs.aadhaar_front?.uri,
+    name: "aadhaar_front.jpg",
+    type: "image/jpeg",
+  } as any);
+
+  formData.append("aadhaar_back", {
+    uri: docs.aadhaar_back?.uri,
+    name: "aadhaar_back.jpg",
+    type: "image/jpeg",
+  } as any);
+
+  formData.append("selfie", {
+    uri: docs.selfie?.uri,
+    name: "selfie.jpg",
+    type: "image/jpeg",
+  } as any);
+
+  const res = await fetch(`${BASE_URL}/workers/upload-documents`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // ❗ DO NOT manually set Content-Type for FormData
+    },
+    body: formData,
+  });
+
+  return res.json();
+};
+
+const verifyAadharAPI = async () => {
+  const token = await AsyncStorage.getItem("access_token");
+
+  const res = await fetch(`${BASE_URL}/workers/verify-aadhaar`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await safeJson(res);
+
+  console.log("STATUS:", res.status);
+  console.log("DATA:", data);
+
+  return {
+    ok: res.ok,
+    data,
+  };
+};
+const verifyFaceAPI = async () => {
+  const token = await AsyncStorage.getItem("access_token");
+
+  const res = await fetch(`${BASE_URL}/workers/verify-face`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  return res.json();
+};
 // ─── Doc Card ─────────────────────────────────────────────────────────────────
 function DocCard({ slot, data, onTap, onRetake }: { slot: DocSlot; data?: DocData; onTap: () => void; onRetake: () => void }) {
   const sc = data?.status ? STATUS_CONFIG[data.status] : null;
@@ -93,7 +191,13 @@ function DocCard({ slot, data, onTap, onRetake }: { slot: DocSlot; data?: DocDat
     </TouchableOpacity>
   );
 }
-
+function BackIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+      <Path d="M11 4L6 9l5 5" stroke={C.navy} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 // ─── Upload Sheet ─────────────────────────────────────────────────────────────
 function UploadSheet({ visible, slotLabel, onCamera, onGallery, onClose }: { visible: boolean; slotLabel: string; onCamera: () => void; onGallery: () => void; onClose: () => void }) {
   return (
@@ -180,11 +284,49 @@ export default function VerificationScreen() {
     if (!res.canceled) handleImage(res.assets[0].uri);
   };
 
-  const handleSubmit = () => {
-    if (!allDone) { Alert.alert("Incomplete", "Please upload all required documents."); return; }
-    router.push("/worker/pending-status");
-  };
+  const handleSubmit = async () => {
+  try {
+    if (!allDone) {
+      Alert.alert("Incomplete", "Please upload all required documents.");
+      return;
+    }
 
+    // 🔹 Step 1: Upload Docs
+    const uploadRes = await uploadDocumentsAPI(docs);
+    console.log("Upload:", uploadRes);
+
+    if (!uploadRes || uploadRes.message !== "Documents and Portfolio uploaded successfully") {
+      Alert.alert("Error", "Document upload failed");
+      return;
+    }
+
+    // 🔹 Step 2: Aadhaar Verification
+    const aadharRes = await verifyAadharAPI();
+    console.log("Aadhar:", aadharRes);
+
+    if (!aadharRes.success) {
+      Alert.alert("Error", "Aadhaar verification failed");
+      return;
+    }
+
+    // 🔹 Step 3: Face Verification
+    const faceRes = await verifyFaceAPI();
+    console.log("Face:", faceRes);
+
+    if (!faceRes.success) {
+      Alert.alert("Error", "Face verification failed");
+      return;
+    }
+
+    // ✅ SUCCESS FLOW
+    Alert.alert("Success", "Verification submitted successfully!");
+    router.push("/worker/pending-status");
+
+  } catch (error) {
+    console.log(error);
+    Alert.alert("Error", "Something went wrong");
+  }
+};
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#EDE9E1" />
@@ -197,7 +339,13 @@ export default function VerificationScreen() {
         </View>
         <Text style={styles.navTag}>HYPERLOCAL AI</Text>
       </View>
-
+  <TouchableOpacity
+  style={styles.backBtn}
+  onPress={() => router.replace("/worker/become-worker")}
+  activeOpacity={0.75}
+>
+            <BackIcon />
+          </TouchableOpacity>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         {/* Header */}
@@ -274,6 +422,13 @@ export default function VerificationScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#EDE9E1" },
+   backBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: C.white, borderWidth: 1, borderColor: C.creamBorder,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: C.navy, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+  },
   scroll:   { paddingBottom: 40 },
   navbar:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 18 },
   brand:     { flexDirection: "row", alignItems: "center" },

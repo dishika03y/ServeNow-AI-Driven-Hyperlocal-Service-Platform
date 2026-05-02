@@ -213,16 +213,16 @@ export default function HomeScreen() {
   const trending = SERVICES.filter((s) => s.trending);
 
   // Loading state
-  if (masterLoading) {
-    return (
-      <View style={styles.loadingScreen}>
-        <StatusBar barStyle="dark-content" backgroundColor={C.cream} />
-        <View style={styles.logoMark}><LogoMark /></View>
-        <ActivityIndicator size="small" color={C.navy} style={{ marginTop: 20 }} />
-        <Text style={styles.loadingText}>Synchronizing…</Text>
-      </View>
-    );
-  }
+  // if (masterLoading) {
+  //   return (
+  //     <View style={styles.loadingScreen}>
+  //       <StatusBar barStyle="dark-content" backgroundColor={C.cream} />
+  //       <View style={styles.logoMark}><LogoMark /></View>
+  //       <ActivityIndicator size="small" color={C.navy} style={{ marginTop: 20 }} />
+  //       <Text style={styles.loadingText}>Synchronizing…</Text>
+  //     </View>
+  //   );
+  // }
 
   if (!isAuthenticated) return null;
 

@@ -124,7 +124,7 @@ export default function Splash() {
 
   setTimeout(() => {
     if (token) {
-      if (role === "admin") {
+      if (role === "Admin") {
         router.replace("/admin/dashboard");
       } else if (role === "worker") {
         router.replace("/worker/home");

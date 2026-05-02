@@ -143,5 +143,28 @@ export async function apiRequest<T = any>(
     throw error;
   }
 }
+const applyWorker = async (payload: any) => {
+  try {
+    const token = await AsyncStorage.getItem("token"); // if you store auth token
 
+    const res = await fetch("https://serservenow-backend.onrender.com/workers/apply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // remove if not needed
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Something went wrong");
+    }
+
+    return data;
+  } catch (err: any) {
+    throw err;
+  }
+}
 export default API;
