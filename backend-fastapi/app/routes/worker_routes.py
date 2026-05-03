@@ -280,9 +280,11 @@ def get_worker_profile(current_user=Depends(get_current_user)):
         "status": worker.get("status", "PENDING")
     }
 
-@router.post("/verify-all")
-def verify_all(current_user=Depends(get_current_user)):
+# Initialize a thread pool for synchronous functions
+thread_pool = ThreadPoolExecutor(max_workers=3)
 
+@router.post("/verify-all")
+async def verify_all(current_user = Depends(get_current_user)):
     worker = worker_collection.find_one(
         {"userId": current_user["_id"]},
         {"_id": 1, "documents": 1}
@@ -291,29 +293,36 @@ def verify_all(current_user=Depends(get_current_user)):
     if not worker or "documents" not in worker:
         raise HTTPException(status_code=400, detail="Documents not uploaded")
 
+    loop = asyncio.get_running_loop()
+
     try:
-        # ─────────────────────────────
-        # 1. OCR (YOUR EXISTING SERVICE)
-        # ─────────────────────────────
-        front_text = extract_text_from_image(worker["documents"]["aadhaarFront"])
-        back_text = extract_text_from_image(worker["documents"]["aadhaarBack"])
+        # Run synchronous service functions in a separate thread pool to prevent blocking the event loop
+        front_text = await loop.run_in_executor(
+            thread_pool, 
+            extract_text_from_image, 
+            worker["documents"]["aadhaarFront"]
+        )
+        back_text = await loop.run_in_executor(
+            thread_pool, 
+            extract_text_from_image, 
+            worker["documents"]["aadhaarBack"]
+        )
+        
+        aadhaar_data = await loop.run_in_executor(
+            thread_pool, 
+            parse_aadhaar_text, 
+            front_text
+        )
 
-        aadhaar_data = parse_aadhaar_text(front_text)
-
-        # ─────────────────────────────
-        # 2. FACE MATCH (YOUR EXISTING SERVICE)
-        # ─────────────────────────────
-        face_result = compare_faces(
-            worker["documents"]["aadhaarFront"],
+        face_result = await loop.run_in_executor(
+            thread_pool, 
+            compare_faces, 
+            worker["documents"]["aadhaarFront"], 
             worker["documents"]["selfieImage"]
         )
 
-        # ─────────────────────────────
-        # 3. DECISION LOGIC (MINIMAL, SAME AS YOUR FINAL VERIFY)
-        # ─────────────────────────────
         num = str(aadhaar_data.get("aadhaarNumber", ""))
         is_valid = len(num) == 12 and num.isdigit()
-
         face_score = face_result.get("score", 0)
 
         if is_valid and face_score >= 0.8:
@@ -326,9 +335,6 @@ def verify_all(current_user=Depends(get_current_user)):
             status = "POTENTIAL_FRAUD_FLAG"
             final_status = "REJECTED"
 
-        # ─────────────────────────────
-        # 4. DB UPDATE
-        # ─────────────────────────────
         worker_collection.update_one(
             {"_id": worker["_id"]},
             {
