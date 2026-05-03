@@ -65,7 +65,7 @@ def get_profile(current_user=Depends(get_current_user)):
         "email": current_user.get("email"),
         "city": current_user.get("city"),
         "pincode": current_user.get("pincode"),
-        "role": current_user.get("role", "USER"),
+        "role": current_user.get("role", "USER").strip(),
 
 
         "is_worker": is_worker,

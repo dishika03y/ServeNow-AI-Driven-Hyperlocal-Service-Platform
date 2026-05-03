@@ -39,7 +39,6 @@
 //   const [requests, setRequests]   = useState<any[]>([]);
 //   const [isWorker, setIsWorker] = useState<boolean | "pending">(false);
 
-
 //   const fetchData = async () => {
 //     try {
 //       const [profileRes, requestsRes] = await Promise.allSettled([
@@ -394,15 +393,13 @@ export default function CustomerDashboard() {
 
   const fetchData = async () => {
     try {
-      const [user, bookingRes, statsRes] = await Promise.all([
+      const [user, bookingRes] = await Promise.all([
         apiRequest("/users/me", "GET"),
         apiRequest("/users/me/bookings", "GET"),
-        apiRequest("/users/me/stats", "GET"),
       ]);
 
       setProfile(user);
       setBookings(bookingRes?.data || []);
-      setStats(statsRes);
       setIsWorker(user?.is_worker);
     } catch (e) {
       console.log(e);
@@ -435,10 +432,7 @@ export default function CustomerDashboard() {
       {
         text: "Logout",
         onPress: async () => {
-          await AsyncStorage.multiRemove([
-            "access_token",
-            "refresh_token",
-          ]);
+          await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
 
           router.replace("/auth/login");
         },
@@ -446,9 +440,7 @@ export default function CustomerDashboard() {
     ]);
   };
 
-  const activeBooking = bookings.find(
-    (b) => b.status !== "completed"
-  );
+  const activeBooking = bookings.find((b) => b.status !== "completed");
 
   const initials =
     profile?.fullName
@@ -460,42 +452,29 @@ export default function CustomerDashboard() {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
       {/* HEADER */}
       <View style={styles.topBar}>
         <View>
           <Text style={styles.small}>Your trusted services</Text>
-          <Text style={styles.date}>
-            {new Date().toDateString()}
-          </Text>
+          <Text style={styles.date}>{new Date().toDateString()}</Text>
         </View>
 
         <TouchableOpacity
           style={styles.avatar}
-          onPress={() =>
-            router.push("/customer/profile")
-          }
+          onPress={() => router.push("/customer/profile")}
         >
-          <Text style={{ color: WHITE }}>
-            {initials}
-          </Text>
+          <Text style={{ color: WHITE }}>{initials}</Text>
         </TouchableOpacity>
       </View>
 
       {/* HERO */}
       <View style={styles.hero}>
-        <Text style={styles.name}>
-          Hi, {profile?.fullName}
-        </Text>
+        <Text style={styles.name}>Hi, {profile?.fullName}</Text>
 
-        <Text style={styles.small}>
-          📍 {profile?.city}
-        </Text>
+        <Text style={styles.small}>📍 {profile?.city}</Text>
       </View>
 
       {/* STATS */}
@@ -517,104 +496,66 @@ export default function CustomerDashboard() {
       {activeBooking && (
         <TouchableOpacity
           style={styles.liveCard}
-          onPress={() =>
-            router.push(
-              `/customer/booking/${activeBooking.id}`
-            )
-          }
+          onPress={() => router.push(`/customer/booking/${activeBooking.id}`)}
         >
-          <Text style={styles.liveTitle}>
-            🔴 Live Booking
-          </Text>
+          <Text style={styles.liveTitle}>🔴 Live Booking</Text>
 
-          <Text style={styles.liveSub}>
-            {activeBooking.service_type}
-          </Text>
+          <Text style={styles.liveSub}>{activeBooking.service_type}</Text>
 
-          <Text style={styles.liveSub}>
-            Track worker →
-          </Text>
+          <Text style={styles.liveSub}>Track worker →</Text>
         </TouchableOpacity>
       )}
 
       {/* QUICK ACTIONS */}
-      <Text style={styles.section}>
-        QUICK ACTIONS
-      </Text>
+      <Text style={styles.section}>QUICK ACTIONS</Text>
 
       <View style={styles.row}>
         <Action
           emoji="🛠️"
           title="Book"
-          onPress={() =>
-            router.push("/(tabs)/home")
-          }
+          onPress={() => router.push("/(tabs)/home")}
         />
 
         <Action
           emoji="💳"
           title="Wallet"
-          onPress={() =>
-            router.push("/customer/wallet")
-          }
+          onPress={() => router.push("/customer/wallet")}
         />
 
         <Action
           emoji="🎧"
           title="Support"
-          onPress={() =>
-            router.push("/customer/support")
-          }
+          onPress={() => router.push("/customer/support")}
         />
       </View>
 
       {/* WORKER CTA */}
-      <TouchableOpacity
-        style={styles.workerCard}
-        onPress={handleWorker}
-      >
+      <TouchableOpacity style={styles.workerCard} onPress={handleWorker}>
         <Text style={styles.workerTitle}>
           {isWorker ? "👷 Worker Mode" : "🚀 Become a Worker"}
         </Text>
 
-        <Text style={styles.workerSub}>
-          Earn by offering services
-        </Text>
+        <Text style={styles.workerSub}>Earn by offering services</Text>
       </TouchableOpacity>
 
       {/* HISTORY */}
-      <Text style={styles.section}>
-        RECENT BOOKINGS
-      </Text>
+      <Text style={styles.section}>RECENT BOOKINGS</Text>
 
       {bookings.slice(0, 3).map((item) => (
         <TouchableOpacity
           key={item.id}
           style={styles.bookingCard}
-          onPress={() =>
-            router.push(
-              `/customer/booking/${item.id}`
-            )
-          }
+          onPress={() => router.push(`/customer/booking/${item.id}`)}
         >
-          <Text style={styles.bookingTitle}>
-            {item.service_type}
-          </Text>
+          <Text style={styles.bookingTitle}>{item.service_type}</Text>
 
-          <Text style={styles.small}>
-            {item.status}
-          </Text>
+          <Text style={styles.small}>{item.status}</Text>
         </TouchableOpacity>
       ))}
 
       {/* LOGOUT */}
-      <TouchableOpacity
-        style={styles.logout}
-        onPress={handleLogout}
-      >
-        <Text style={{ color: DANGER }}>
-          Logout
-        </Text>
+      <TouchableOpacity style={styles.logout} onPress={handleLogout}>
+        <Text style={{ color: DANGER }}>Logout</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -624,22 +565,15 @@ function Stat({ icon, value, label }: any) {
   return (
     <View style={styles.stat}>
       <Text>{icon}</Text>
-      <Text style={styles.statValue}>
-        {value}
-      </Text>
-      <Text style={styles.small}>
-        {label}
-      </Text>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.small}>{label}</Text>
     </View>
   );
 }
 
 function Action({ emoji, title, onPress }: any) {
   return (
-    <TouchableOpacity
-      style={styles.action}
-      onPress={onPress}
-    >
+    <TouchableOpacity style={styles.action} onPress={onPress}>
       <Text>{emoji}</Text>
       <Text>{title}</Text>
     </TouchableOpacity>
@@ -772,4 +706,3 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
 });
-

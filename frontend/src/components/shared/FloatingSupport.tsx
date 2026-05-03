@@ -24,14 +24,15 @@ export default function FloatingSupport() {
   }, []);
 
   const loadUnread = async () => {
-    try {
-      const data = await apiRequest(
-        "/support/unread-count",
-        "GET"
-      );
+    // try {
+    //   const data = await apiRequest(
+    //     "/support/unread-count",
+    //     "GET"
+    //   );
 
-      setCount(data?.count || 0);
-    } catch {}
+    //   setCount(data?.count || 0);
+    // } catch {}
+    return;
   };
 
   return (

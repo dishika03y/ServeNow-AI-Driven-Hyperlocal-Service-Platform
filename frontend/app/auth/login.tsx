@@ -47,8 +47,21 @@ const PhoneIcon = () => (
 
 const LockIcon = () => (
   <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
-    <Rect x={3} y={8} width={12} height={8} rx={2} stroke={C.navy} strokeWidth={1.3} />
-    <Path d="M6 8V5.5a3 3 0 016 0V8" stroke={C.navy} strokeWidth={1.3} strokeLinecap="round" />
+    <Rect
+      x={3}
+      y={8}
+      width={12}
+      height={8}
+      rx={2}
+      stroke={C.navy}
+      strokeWidth={1.3}
+    />
+    <Path
+      d="M6 8V5.5a3 3 0 016 0V8"
+      stroke={C.navy}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+    />
     <Circle cx={9} cy={12} r={1.2} fill={C.navy} />
   </Svg>
 );
@@ -62,7 +75,12 @@ const EyeIcon = ({ visible }: { visible: boolean }) => (
     />
     <Circle cx={8} cy={8} r={2} stroke={C.navy} strokeWidth={1.2} />
     {!visible && (
-      <Path d="M2 2l12 12" stroke={C.navy} strokeWidth={1.2} strokeLinecap="round" />
+      <Path
+        d="M2 2l12 12"
+        stroke={C.navy}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      />
     )}
   </Svg>
 );
@@ -88,20 +106,46 @@ const LogoMark = () => (
 
 const ShieldIcon = () => (
   <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
-    <Rect x={1.5} y={5} width={9} height={6.5} rx={1.2} stroke={C.navy} strokeWidth={1.1} opacity={0.4} />
-    <Path d="M4 5V3.5a2 2 0 014 0V5" stroke={C.navy} strokeWidth={1.1} strokeLinecap="round" opacity={0.4} />
+    <Rect
+      x={1.5}
+      y={5}
+      width={9}
+      height={6.5}
+      rx={1.2}
+      stroke={C.navy}
+      strokeWidth={1.1}
+      opacity={0.4}
+    />
+    <Path
+      d="M4 5V3.5a2 2 0 014 0V5"
+      stroke={C.navy}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
   </Svg>
 );
 
 const CheckIcon = () => (
   <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
-    <Path d="M2 6l3 3 5-5" stroke={C.navy} strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" opacity={0.4} />
+    <Path
+      d="M2 6l3 3 5-5"
+      stroke={C.navy}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      opacity={0.4}
+    />
   </Svg>
 );
 
 const StarIcon = () => (
   <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
-    <Path d="M6 1l1.3 2.6 2.9.4-2.1 2 .5 2.9L6 7.5 3.4 8.9l.5-2.9-2.1-2 2.9-.4L6 1z" fill={C.navy} opacity={0.4} />
+    <Path
+      d="M6 1l1.3 2.6 2.9.4-2.1 2 .5 2.9L6 7.5 3.4 8.9l.5-2.9-2.1-2 2.9-.4L6 1z"
+      fill={C.navy}
+      opacity={0.4}
+    />
   </Svg>
 );
 
@@ -130,12 +174,7 @@ function Field({
   return (
     <View style={styles.fieldWrap}>
       <Text style={styles.label}>{label}</Text>
-      <View
-        style={[
-          styles.inputRow,
-          focused && styles.inputRowFocused,
-        ]}
-      >
+      <View style={[styles.inputRow, focused && styles.inputRowFocused]}>
         <View style={styles.inputIcon}>{icon}</View>
         <TextInput
           style={styles.input}
@@ -170,59 +209,65 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
- const handleLogin = async () => {
-  if (!phone || !password) {
-    setError(!phone ? "Please enter your phone number." : "Please enter your password.");
-    return;
-  }
-
-  setLoading(true);
-  setError("");
-
-  try {
-    const data = await apiRequest("/auth/login", "POST", {
-      phone,
-      password,
-    });
-
-    if (data?.access_token) {
-      const token = data.access_token;
-
-      await AsyncStorage.setItem("access_token", token);
-
-      if (data.refresh_token) {
-        await AsyncStorage.setItem("refresh_token", data.refresh_token);
-      }
-
-      if (data.role) {
-        await AsyncStorage.setItem("role", data.role);
-      }
-
-      // ✅ CALL /users/me API
-    // ✅ CALL /users/me
-const userData = await apiRequest("/users/me", "GET", null, {
-  Authorization: `Bearer ${token}`,
-});
-
-// ✅ DIRECT DECISION
-if (userData?.is_worker) {
-  router.replace("/(worker-tabs)/dashboard");
-} else if (userData?.role === "Admin") {
-  router.replace("/admin/dashboard");
-} else {
-  router.replace("/(tabs)/home");
-}
-
-    } else {
-      setError("Login failed");
+  const handleLogin = async () => {
+    if (!phone || !password) {
+      setError(
+        !phone
+          ? "Please enter your phone number."
+          : "Please enter your password.",
+      );
+      return;
     }
-  } catch (err: any) {
-    const msg = err.response?.data?.detail;
-    setError(typeof msg === "string" ? msg : "Invalid phone or password.");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await apiRequest("/auth/login", "POST", {
+        phone,
+        password,
+      });
+
+      if (data?.access_token) {
+        const token = data.access_token;
+
+        await AsyncStorage.setItem("access_token", token);
+
+        if (data.refresh_token) {
+          await AsyncStorage.setItem("refresh_token", data.refresh_token);
+        }
+
+        if (data.role) {
+          await AsyncStorage.setItem("role", data.role);
+        }
+
+        // ✅ CALL /users/me API
+        // ✅ CALL /users/me
+        const userData = await apiRequest("/users/me", "GET", null, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("USER DATA:", userData);
+
+        // ✅ DIRECT DECISION
+        if (userData?.is_worker) {
+          router.replace("/(worker-tabs)/dashboard");
+        } else if (userData?.role?.trim() === "ADMIN") {
+          router.replace("/admin/dashboard");
+        } else {
+          router.replace("/(tabs)/home");
+        }
+      } else {
+        setError("Login failed");
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.detail;
+      setError(typeof msg === "string" ? msg : "Invalid phone or password.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.root}>
@@ -249,8 +294,7 @@ if (userData?.is_worker) {
         {/* Card */}
         <View style={styles.card}>
           <Text style={styles.heading}>
-            Welcome{" "}
-            <Text style={styles.headingItalic}>back.</Text>
+            Welcome <Text style={styles.headingItalic}>back.</Text>
           </Text>
           <Text style={styles.desc}>
             Find trusted services near you — login to continue
@@ -317,10 +361,10 @@ if (userData?.is_worker) {
           {/* Social */}
           <View style={styles.socialRow}>
             <TouchableOpacity style={styles.socialBtn} activeOpacity={0.75}>
-              <Text style={styles.socialBtnText}>G  Google</Text>
+              <Text style={styles.socialBtnText}>G Google</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.socialBtn} activeOpacity={0.75}>
-              <Text style={styles.socialBtnText}>⌥  GitHub</Text>
+              <Text style={styles.socialBtnText}>⌥ GitHub</Text>
             </TouchableOpacity>
           </View>
         </View>

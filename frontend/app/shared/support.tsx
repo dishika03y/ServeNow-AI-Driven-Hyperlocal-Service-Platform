@@ -1,7 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-} from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   View,
@@ -19,43 +16,35 @@ const NAVY = "#081F5C";
 const WHITE = "#FFFFFF";
 
 export default function SupportScreen() {
-  const [messages, setMessages] =
-    useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
 
-  const [text, setText] =
-    useState("");
+  const [text, setText] = useState("");
 
   useEffect(() => {
     loadMessages();
   }, []);
 
   const loadMessages = async () => {
-    try {
-      const data = await apiRequest(
-        "/support/messages",
-        "GET"
-      );
+    // try {
+    //   const data = await apiRequest(
+    //     "/support/messages",
+    //     "GET"
+    //   );
 
-      setMessages(data || []);
-    } catch {}
+    //   setMessages(data || []);
+    // } catch {}
+    return;
   };
 
   const send = async () => {
     if (!text.trim()) return;
 
     try {
-      const msg = await apiRequest(
-        "/support/send",
-        "POST",
-        {
-          message: text,
-        }
-      );
+      const msg = await apiRequest("/support/send", "POST", {
+        message: text,
+      });
 
-      setMessages((prev) => [
-        ...prev,
-        msg,
-      ]);
+      setMessages((prev) => [...prev, msg]);
 
       setText("");
     } catch {}
@@ -65,14 +54,10 @@ export default function SupportScreen() {
     <View style={styles.container}>
       <FlatList
         data={messages}
-        keyExtractor={(i) =>
-          i.id.toString()
-        }
+        keyExtractor={(i) => i.id.toString()}
         renderItem={({ item }) => (
           <View style={styles.bubble}>
-            <Text>
-              {item.message}
-            </Text>
+            <Text>{item.message}</Text>
           </View>
         )}
       />
@@ -85,9 +70,7 @@ export default function SupportScreen() {
           placeholder="Message..."
         />
 
-        <TouchableOpacity
-          onPress={send}
-        >
+        <TouchableOpacity onPress={send}>
           <Text>Send</Text>
         </TouchableOpacity>
       </View>
@@ -96,24 +79,24 @@ export default function SupportScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:{
-    flex:1,
-    backgroundColor:CREAM,
+  container: {
+    flex: 1,
+    backgroundColor: CREAM,
   },
 
-  bubble:{
-    backgroundColor:WHITE,
-    margin:12,
-    padding:16,
-    borderRadius:16,
+  bubble: {
+    backgroundColor: WHITE,
+    margin: 12,
+    padding: 16,
+    borderRadius: 16,
   },
 
-  inputRow:{
-    flexDirection:"row",
-    padding:16,
+  inputRow: {
+    flexDirection: "row",
+    padding: 16,
   },
 
-  input:{
-    flex:1,
+  input: {
+    flex: 1,
   },
 });

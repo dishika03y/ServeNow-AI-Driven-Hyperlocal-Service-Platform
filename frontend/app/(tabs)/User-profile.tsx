@@ -10,11 +10,7 @@ import {
 
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
+import React, { useEffect, useState, useCallback } from "react";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/src/api/api";
@@ -27,68 +23,52 @@ const MUTED = "rgba(8,31,92,0.45)";
 const BORDER = "rgba(8,31,92,0.08)";
 const DANGER = "#D94F4F";
 
-export default function CustomerProfileScreen() {
+export default async function CustomerProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isWorker, setIsWorker] = useState<any>(false);
   const [workerStatus, setWorkerStatus] = useState(null);
 
- const fetchData = async () => {
-  try {
-    const [user, statRes] = await Promise.all([
-      apiRequest("/users/me", "GET"),
-      apiRequest("/users/me/stats", "GET"),
-    ]);
+  const fetchData = async () => {
+    try {
+      const user = await apiRequest("/users/me", "GET");
 
-    setProfile(user);
-    setStats(statRes);
+      setProfile(user);
+      setIsWorker(user?.is_worker);
 
-    // 🔥 normalize data
-    const normalizedStatus =
-      user?.worker_status?.trim().toUpperCase();
-
-    setIsWorker(user?.is_worker);
-    setWorkerStatus(normalizedStatus);
-
-    console.log("Worker Status:", normalizedStatus);
-
-  } catch (error) {
-    console.log("Fetch Error:", error);
-  } finally {
-    setRefreshing(false);
-  }
-};
-
-const onRefresh = useCallback(() => {
-  setRefreshing(true);
-  fetchData();
-}, []);
+      // 🚧 TEMP: stats API not ready
+      // const statRes = await apiRequest("/users/me/stats", "GET");
+      // setStats(statRes);
+    } catch (error) {
+      console.log("Fetch Error:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const isPendingWorker =
-  workerStatus === "PENDING" ||
-  workerStatus === "DOCUMENTS_UPLOADED";
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData();
+  }, []);
 
-const isNotApplied =
-  workerStatus === "NULL" ||
-  workerStatus === null;
-const handleWorker = () => {
-  console.log("STATUS:", workerStatus);
+  const worker = await apiRequest("/worker/me", "GET");
+  setWorkerStatus(worker.status);
+  const handleWorker = () => {
+    console.log("STATUS:", workerStatus);
 
-  if (isWorker === true) {
-    router.push("/(worker-tabs)/dashboard");
-
-  } else if (isPendingWorker) {
-    router.push("/worker/verification");
-
-  } else {
-    router.push("/worker/become-worker");
-  }
-};
+    if (isWorker === true || workerStatus === "APPROVED") {
+      router.push("/(worker-tabs)/dashboard");
+    } else if (workerStatus === "PENDING") {
+      router.push("/worker/verification");
+    } else {
+      router.push("/worker/become-worker");
+    }
+  };
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure?", [
       {
@@ -96,10 +76,7 @@ const handleWorker = () => {
         style: "destructive",
 
         onPress: async () => {
-          await AsyncStorage.multiRemove([
-            "access_token",
-            "refresh_token",
-          ]);
+          await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
 
           router.replace("/auth/login");
         },
@@ -117,148 +94,107 @@ const handleWorker = () => {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {initials}
-          </Text>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
 
-        <Text style={styles.name}>
-          {profile?.fullName}
-        </Text>
+        <Text style={styles.name}>{profile?.fullName}</Text>
 
-        <Text style={styles.location}>
-          📍 {profile?.city}
-        </Text>
+        <Text style={styles.location}>📍 {profile?.city}</Text>
       </View>
 
       {/* STATS */}
       <View style={styles.statsRow}>
-        <Stat
-          value={stats?.total_bookings || 0}
-          label="Bookings"
-        />
+        <Stat value={stats?.total_bookings || 0} label="Bookings" />
 
-        <Stat
-          value={stats?.active_bookings || 0}
-          label="Active"
-        />
+        <Stat value={stats?.active_bookings || 0} label="Active" />
 
-        <Stat
-          value={stats?.completed_bookings || 0}
-          label="Completed"
-        />
+        <Stat value={stats?.completed_bookings || 0} label="Completed" />
       </View>
 
       {/* BECOME WORKER */}
-   <TouchableOpacity
-  style={styles.workerCard}
-  onPress={handleWorker}
-  activeOpacity={0.85}
->
-  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-    
-    <Text style={{ fontSize: 26 }}>
-      {isWorker ? "👷‍♂️" : "🚀"}
-    </Text>
+      <TouchableOpacity
+        style={styles.workerCard}
+        onPress={handleWorker}
+        activeOpacity={0.85}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Text style={{ fontSize: 26 }}>{isWorker ? "👷‍♂️" : "🚀"}</Text>
 
-    <View>
-      <Text style={styles.workerTitle}>
-        {isWorker === true
-          ? "Switch to Worker Mode"
-          : isPendingWorker
-          ? "Check Status"
-          : "Become a Worker"}
-      </Text>
+          <View>
+            <Text style={styles.workerTitle}>
+              {isWorker === true
+                ? "Switch to Worker Mode"
+                : workerStatus === "PENDING"
+                  ? "Check Status"
+                  : "Become a Worker"}
+            </Text>
 
-      <Text style={styles.workerSub}>
-        {isWorker === true
-          ? "Manage jobs, earnings & profile"
-          : "Start earning by offering services"}
-      </Text>
-    </View>
-  </View>
+            <Text style={styles.workerSub}>
+              {isWorker === true
+                ? "Manage jobs, earnings & profile"
+                : "Start earning by offering services"}
+            </Text>
+          </View>
+        </View>
 
-  <Text style={{ color: "#BAD6EB", marginTop: 10, fontWeight: "600" }}>
-    {isWorker === true ? "Open →" : "Apply →"}
-  </Text>
-</TouchableOpacity>
+        <Text style={{ color: "#BAD6EB", marginTop: 10, fontWeight: "600" }}>
+          {isWorker === true ? "Open →" : "Apply →"}
+        </Text>
+      </TouchableOpacity>
 
       {/* MY SERVICES */}
-      <Text style={styles.sectionTitle}>
-        MY SERVICES
-      </Text>
+      <Text style={styles.sectionTitle}>MY SERVICES</Text>
 
       <Menu
         icon="clipboard-outline"
         title="My Bookings"
-        onPress={() =>
-          router.push("/customer/history")
-        }
+        onPress={() => router.push("/customer/history")}
       />
 
       <Menu
         icon="time-outline"
         title="Track Current Job"
-        onPress={() =>
-          router.push("/customer/live")
-        }
+        onPress={() => router.push("/customer/live")}
       />
 
       <Menu
         icon="card-outline"
         title="Payments & Wallet"
-        onPress={() =>
-          router.push("/customer/wallet")
-        }
+        onPress={() => router.push("/customer/wallet")}
       />
 
       <Menu
         icon="heart-outline"
         title="Favorite Workers"
-        onPress={() =>
-          router.push("/customer/favorites")
-        }
+        onPress={() => router.push("/customer/favorites")}
       />
 
       {/* ACCOUNT */}
-      <Text style={styles.sectionTitle}>
-        ACCOUNT
-      </Text>
+      <Text style={styles.sectionTitle}>ACCOUNT</Text>
 
       <Menu
         icon="person-outline"
         title="Edit Profile"
-        onPress={() =>
-          router.push("/customer/edit-profile")
-        }
+        onPress={() => router.push("/customer/edit-profile")}
       />
 
       {/* SETTINGS ADDED HERE */}
       <Menu
         icon="settings-outline"
         title="Settings"
-        onPress={() =>
-          router.push("/shared/settings")
-        }
+        onPress={() => router.push("/shared/settings")}
       />
 
       <Menu
         icon="notifications-outline"
         title="Notifications"
-        onPress={() =>
-          router.push(
-            "/customer/notifications"
-          )
-        }
+        onPress={() => router.push("/customer/notifications")}
       />
 
       <Menu
@@ -274,48 +210,23 @@ const handleWorker = () => {
 function Stat({ value, label }: any) {
   return (
     <View style={styles.statCard}>
-      <Text style={styles.statValue}>
-        {value}
-      </Text>
+      <Text style={styles.statValue}>{value}</Text>
 
-      <Text style={styles.statLabel}>
-        {label}
-      </Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
-function Menu({
-  icon,
-  title,
-  onPress,
-  danger = false,
-}: any) {
+function Menu({ icon, title, onPress, danger = false }: any) {
   return (
-    <TouchableOpacity
-      style={styles.menuItem}
-      onPress={onPress}
-    >
-      <Ionicons
-        name={icon}
-        size={22}
-        color={danger ? DANGER : NAVY}
-      />
+    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+      <Ionicons name={icon} size={22} color={danger ? DANGER : NAVY} />
 
-      <Text
-        style={[
-          styles.menuText,
-          danger && { color: DANGER },
-        ]}
-      >
+      <Text style={[styles.menuText, danger && { color: DANGER }]}>
         {title}
       </Text>
 
-      <Ionicons
-        name="chevron-forward"
-        size={18}
-        color={MUTED}
-      />
+      <Ionicons name="chevron-forward" size={18} color={MUTED} />
     </TouchableOpacity>
   );
 }

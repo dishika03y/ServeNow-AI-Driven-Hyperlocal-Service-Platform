@@ -255,7 +255,13 @@ def reset_application(current_user=Depends(get_current_user)):
 def get_worker_profile(current_user=Depends(get_current_user)):
     worker = worker_collection.find_one({"userId": current_user["_id"]},{
         "_id": 1,
-        "userId": 1
+        "userId": 1,
+        "fullName": 1,
+        "phone": 1,
+        "serviceCategory": 1,   
+        "experienceYears": 1,
+         "isLive": 1,
+         "status": 1
     })
 
     if not worker:
