@@ -16,29 +16,6 @@ import { handleUserRouting } from "@/src/utils/navigation";
 
 const { width: W } = Dimensions.get("window");
 
-useEffect(() => {
-  const init = async () => {
-    try {
-      const token = await AsyncStorage.getItem("access_token");
-
-      if (!token) {
-        router.replace("/auth/login");
-        return;
-      }
-
-      // 🔥 THIS IS WHAT YOU ARE MISSING OR DOING WRONG
-      const user = await apiRequest("/users/me", "GET");
-
-      handleUserRouting(user);
-    } catch (err) {
-      console.log("Init Error:", err);
-      router.replace("/auth/login");
-    }
-  };
-
-  init();
-}, []);
-
 const C = {
   navy: "#081F5C",
   sky: "#BAD6EB",
@@ -127,6 +104,26 @@ export default function Splash() {
   const contentY = useRef(new Animated.Value(14)).current;
 
   useEffect(() => {
+    const init = async () => {
+      try {
+        const token = await AsyncStorage.getItem("access_token");
+
+        if (!token) {
+          router.replace("/auth/login");
+          return;
+        }
+
+        const user = await apiRequest("/users/me", "GET");
+
+        console.log("USER:", user);
+
+        handleUserRouting(user);
+      } catch (e) {
+        router.replace("/auth/login");
+      }
+    };
+
+    init();
     // animations
     Animated.parallel([
       Animated.timing(fade, {
@@ -157,30 +154,7 @@ export default function Splash() {
         useNativeDriver: true,
       }),
     ]).start();
-
-    // 🔥 REAL LOGIN CHECK
-    const checkAuth = async () => {
-      const token = await AsyncStorage.getItem("access_token");
-      const role = await AsyncStorage.getItem("role"); // 👈 ADD THIS
-
-      setTimeout(() => {
-        if (token) {
-          if (role === "Admin") {
-            router.replace("/admin/dashboard");
-          } else if (role === "worker") {
-            router.replace("/worker/home");
-          } else {
-            router.replace("/(tabs)/home");
-          }
-        } else {
-          router.replace("/auth/login");
-        }
-      }, 2000);
-    };
-
-    checkAuth();
   }, []);
-
   const barWidth = progress.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
