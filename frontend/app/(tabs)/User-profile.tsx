@@ -1,422 +1,3 @@
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   ScrollView,
-//   TouchableOpacity,
-//   RefreshControl,
-// } from "react-native";
-// import { Ionicons } from "@expo/vector-icons";
-// import { router } from "expo-router";
-// import React, {
-//   useEffect,
-//   useState,
-//   useCallback,
-// } from "react";
-
-// import { apiRequest } from "@/src/api/api";
-
-// const CREAM = "#F7F2EB";
-// const NAVY = "#081F5C";
-// const SKY = "#BAD6EB";
-// const WHITE = "#FFFFFF";
-// const MUTED = "rgba(8,31,92,0.45)";
-// const BORDER = "rgba(8,31,92,0.08)";
-
-// export default function CustomerProfileScreen() {
-//   const [profile, setProfile] = useState<any>(null);
-//   const [stats, setStats] = useState<any>(null);
-//   const [isWorker, setIsWorker] = useState<any>(false);
-//   const [refreshing, setRefreshing] =
-//     useState(false);
-
-//   const fetchData = async () => {
-//     try {
-//       const [user, statRes] =
-//         await Promise.all([
-//           apiRequest("/users/me", "GET"),
-//           apiRequest(
-//             "/users/me/profile-dashboard",
-//             "GET"
-//           ),
-//         ]);
-
-//       setProfile(user);
-//       setStats(statRes);
-//       setIsWorker(user?.is_worker);
-//     } catch (error) {
-//       console.log(error);
-//     } finally {
-//       setRefreshing(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchData();
-//   }, []);
-
-//   const onRefresh = useCallback(() => {
-//     setRefreshing(true);
-//     fetchData();
-//   }, []);
-
-//   const handleWorker = () => {
-//     if (isWorker === true) {
-//       router.push(
-//         "/(worker-tabs)/dashboard"
-//       );
-//     } else if (isWorker === "pending") {
-//       router.push(
-//         "/worker/verification"
-//       );
-//     } else {
-//       router.push(
-//         "/worker/become-worker"
-//       );
-//     }
-//   };
-
-//   const initials =
-//     profile?.fullName
-//       ?.split(" ")
-//       .map((x: string) => x[0])
-//       .join("") || "U";
-
-//   return (
-//     <ScrollView
-//       style={styles.container}
-//       showsVerticalScrollIndicator={
-//         false
-//       }
-//       refreshControl={
-//         <RefreshControl
-//           refreshing={refreshing}
-//           onRefresh={onRefresh}
-//         />
-//       }
-//     >
-//       {/* USER INFO */}
-//       <TouchableOpacity
-//         style={styles.header}
-//         onPress={() =>
-//           router.push(
-//             "/customer/edit-profile"
-//           )
-//         }
-//       >
-//         <View style={styles.avatar}>
-//           <Text
-//             style={styles.avatarText}
-//           >
-//             {initials}
-//           </Text>
-//         </View>
-
-//         <Text style={styles.name}>
-//           {profile?.fullName}
-//         </Text>
-
-//         <Text
-//           style={styles.location}
-//         >
-//           📍 {profile?.city}
-//         </Text>
-//       </TouchableOpacity>
-
-//       {/* STATS */}
-//       <View style={styles.statsRow}>
-//         <Stat
-//           value={
-//             stats?.total_bookings || 0
-//           }
-//           label="Bookings"
-//         />
-
-//         <Stat
-//           value={`₹${
-//             stats?.total_spent || 0
-//           }`}
-//           label="Spent"
-//         />
-
-//         <Stat
-//           value={
-//             stats?.saved_workers || 0
-//           }
-//           label="Saved"
-//         />
-//       </View>
-
-//       {/* ACTIVE JOB */}
-//       {stats?.active_booking && (
-//         <TouchableOpacity
-//           style={styles.liveCard}
-//           onPress={() =>
-//             router.push(
-//               "/customer/live"
-//             )
-//           }
-//         >
-//           <Text
-//             style={styles.liveTitle}
-//           >
-//             🔴 Track Active Booking
-//           </Text>
-
-//           <Text
-//             style={styles.liveSub}
-//           >
-//             Worker is on the way →
-//           </Text>
-//         </TouchableOpacity>
-//       )}
-
-//       {/* WORKER CTA */}
-//       <TouchableOpacity
-//         style={styles.workerCard}
-//         onPress={handleWorker}
-//       >
-//         <Text
-//           style={styles.workerTitle}
-//         >
-//           {isWorker
-//             ? "👷 Worker Mode"
-//             : "🚀 Become a Worker"}
-//         </Text>
-
-//         <Text
-//           style={styles.workerSub}
-//         >
-//           Start earning with
-//           your skills
-//         </Text>
-//       </TouchableOpacity>
-
-//       {/* USER ACTIONS */}
-//       <Text style={styles.section}>
-//         QUICK ACCESS
-//       </Text>
-
-//       <Menu
-//         icon="clipboard-outline"
-//         title="Booking History"
-//         route="/customer/history"
-//       />
-
-//       <Menu
-//         icon="heart-outline"
-//         title="Saved Workers"
-//         route="/customer/favorites"
-//       />
-
-//       <Menu
-//         icon="location-outline"
-//         title="Saved Addresses"
-//         route="/customer/addresses"
-//       />
-
-//       <Menu
-//         icon="wallet-outline"
-//         title="Wallet"
-//         route="/customer/wallet"
-//       />
-
-//       <Menu
-//         icon="call-outline"
-//         title="Emergency Help"
-//         route="/customer/emergency"
-//       />
-
-//       <View
-//         style={{ height: 40 }}
-//       />
-//     </ScrollView>
-//   );
-// }
-
-// function Stat({
-//   value,
-//   label,
-// }: any) {
-//   return (
-//     <View style={styles.stat}>
-//       <Text
-//         style={styles.statValue}
-//       >
-//         {value}
-//       </Text>
-
-//       <Text
-//         style={styles.statLabel}
-//       >
-//         {label}
-//       </Text>
-//     </View>
-//   );
-// }
-
-// function Menu({
-//   icon,
-//   title,
-//   route,
-// }: any) {
-//   return (
-//     <TouchableOpacity
-//       style={styles.menu}
-//       onPress={() =>
-//         router.push(route)
-//       }
-//     >
-//       <Ionicons
-//         name={icon}
-//         size={22}
-//         color={NAVY}
-//       />
-
-//       <Text
-//         style={styles.menuText}
-//       >
-//         {title}
-//       </Text>
-
-//       <Ionicons
-//         name="chevron-forward"
-//         size={18}
-//         color={MUTED}
-//       />
-//     </TouchableOpacity>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: CREAM,
-//   },
-
-//   header: {
-//     alignItems: "center",
-//     paddingTop: 70,
-//     paddingBottom: 25,
-//   },
-
-//   avatar: {
-//     width: 84,
-//     height: 84,
-//     borderRadius: 26,
-//     backgroundColor: NAVY,
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-
-//   avatarText: {
-//     color: WHITE,
-//     fontWeight: "800",
-//     fontSize: 24,
-//   },
-
-//   name: {
-//     marginTop: 14,
-//     color: NAVY,
-//     fontSize: 22,
-//     fontWeight: "800",
-//   },
-
-//   location: {
-//     marginTop: 5,
-//     color: MUTED,
-//   },
-
-//   statsRow: {
-//     flexDirection: "row",
-//     gap: 10,
-//     paddingHorizontal: 20,
-//   },
-
-//   stat: {
-//     flex: 1,
-//     backgroundColor: WHITE,
-//     borderRadius: 18,
-//     padding: 18,
-//     alignItems: "center",
-//   },
-
-//   statValue: {
-//     color: NAVY,
-//     fontSize: 18,
-//     fontWeight: "800",
-//   },
-
-//   statLabel: {
-//     marginTop: 5,
-//     color: MUTED,
-//     fontSize: 11,
-//   },
-
-//   liveCard: {
-//     backgroundColor: NAVY,
-//     margin: 20,
-//     padding: 20,
-//     borderRadius: 20,
-//   },
-
-//   liveTitle: {
-//     color: WHITE,
-//     fontWeight: "800",
-//   },
-
-//   liveSub: {
-//     color: SKY,
-//     marginTop: 5,
-//   },
-
-//   workerCard: {
-//     backgroundColor: NAVY,
-//     marginHorizontal: 20,
-//     borderRadius: 20,
-//     padding: 20,
-//   },
-
-//   workerTitle: {
-//     color: WHITE,
-//     fontWeight: "800",
-//   },
-
-//   workerSub: {
-//     color: SKY,
-//     marginTop: 4,
-//   },
-
-//   section: {
-//     marginTop: 28,
-//     marginLeft: 20,
-//     marginBottom: 12,
-//     color: MUTED,
-//     fontWeight: "700",
-//     fontSize: 11,
-//   },
-
-//   menu: {
-//     marginHorizontal: 20,
-//     marginBottom: 10,
-//     backgroundColor: WHITE,
-//     borderRadius: 18,
-//     borderWidth: 1,
-//     borderColor: BORDER,
-//     flexDirection: "row",
-//     alignItems: "center",
-//     padding: 18,
-//   },
-
-//   menuText: {
-//     flex: 1,
-//     marginLeft: 14,
-//     color: NAVY,
-//     fontWeight: "600",
-//   },
-// }); 
-
-
 import {
   View,
   Text,
@@ -451,43 +32,63 @@ export default function CustomerProfileScreen() {
   const [stats, setStats] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isWorker, setIsWorker] = useState<any>(false);
+  const [workerStatus, setWorkerStatus] = useState(null);
 
-  const fetchData = async () => {
-    try {
-      const [user, statRes] = await Promise.all([
-        apiRequest("/users/me", "GET"),
-        apiRequest("/users/me/stats", "GET"),
-      ]);
+ const fetchData = async () => {
+  try {
+    const [user, statRes] = await Promise.all([
+      apiRequest("/users/me", "GET"),
+      apiRequest("/users/me/stats", "GET"),
+    ]);
 
-      setProfile(user);
-      setStats(statRes);
-      setIsWorker(user?.is_worker);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+    setProfile(user);
+    setStats(statRes);
+
+    // 🔥 normalize data
+    const normalizedStatus =
+      user?.worker_status?.trim().toUpperCase();
+
+    setIsWorker(user?.is_worker);
+    setWorkerStatus(normalizedStatus);
+
+    console.log("Worker Status:", normalizedStatus);
+
+  } catch (error) {
+    console.log("Fetch Error:", error);
+  } finally {
+    setRefreshing(false);
+  }
+};
+
+const onRefresh = useCallback(() => {
+  setRefreshing(true);
+  fetchData();
+}, []);
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchData();
-  }, []);
+  const isPendingWorker =
+  workerStatus === "PENDING" ||
+  workerStatus === "DOCUMENTS_UPLOADED";
 
-  const handleWorker = () => {
-    if (isWorker === true) {
-      router.push("/(worker-tabs)/dashboard");
-    } else if (isWorker === "pending") {
-      router.push("/worker/verification");
-    } else {
-      router.push("/worker/become-worker");
-    }
-  };
+const isNotApplied =
+  workerStatus === "NULL" ||
+  workerStatus === null;
+const handleWorker = () => {
+  console.log("STATUS:", workerStatus);
 
+  if (isWorker === true) {
+    router.push("/(worker-tabs)/dashboard");
+
+  } else if (isPendingWorker) {
+    router.push("/worker/verification");
+
+  } else {
+    router.push("/worker/become-worker");
+  }
+};
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure?", [
       {
@@ -558,20 +159,38 @@ export default function CustomerProfileScreen() {
       </View>
 
       {/* BECOME WORKER */}
-      <TouchableOpacity
-        style={styles.workerCard}
-        onPress={handleWorker}
-      >
-        <Text style={styles.workerTitle}>
-          {isWorker
-            ? "👷 Worker Mode"
-            : "🚀 Become a Worker"}
-        </Text>
+   <TouchableOpacity
+  style={styles.workerCard}
+  onPress={handleWorker}
+  activeOpacity={0.85}
+>
+  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+    
+    <Text style={{ fontSize: 26 }}>
+      {isWorker ? "👷‍♂️" : "🚀"}
+    </Text>
 
-        <Text style={styles.workerSub}>
-          Start earning from your skills
-        </Text>
-      </TouchableOpacity>
+    <View>
+      <Text style={styles.workerTitle}>
+        {isWorker === true
+          ? "Switch to Worker Mode"
+          : isPendingWorker
+          ? "Check Status"
+          : "Become a Worker"}
+      </Text>
+
+      <Text style={styles.workerSub}>
+        {isWorker === true
+          ? "Manage jobs, earnings & profile"
+          : "Start earning by offering services"}
+      </Text>
+    </View>
+  </View>
+
+  <Text style={{ color: "#BAD6EB", marginTop: 10, fontWeight: "600" }}>
+    {isWorker === true ? "Open →" : "Apply →"}
+  </Text>
+</TouchableOpacity>
 
       {/* MY SERVICES */}
       <Text style={styles.sectionTitle}>
