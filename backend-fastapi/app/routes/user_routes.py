@@ -9,7 +9,7 @@ from app.schemas.user_schemas import UpdateUserSchema
 from app.services.user_service import get_user_profile, update_user_profile
 from app.services.request_service import get_user_requests
 
-from app.utils.responses import success_response
+from app.core.response import success_response
 
 router = APIRouter(
     prefix="/users",
