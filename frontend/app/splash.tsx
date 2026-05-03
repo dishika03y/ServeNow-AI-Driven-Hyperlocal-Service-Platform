@@ -115,8 +115,6 @@ export default function Splash() {
 
         const user = await apiRequest("/users/me", "GET");
 
-        console.log("USER:", user);
-
         handleUserRouting(user);
       } catch (e) {
         router.replace("/auth/login");
