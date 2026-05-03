@@ -3,17 +3,17 @@ from app.database.db import worker_collection, user_collection
 
 
 # Get workers by status
-async def get_workers_by_status(status: str):
+def get_workers_by_status(status: str):
     query = {}
 
     if status:
         query["status"] = status
 
-    workers = await worker_collection.find(query).to_list(length=None)
+    workers = worker_collection.find(query).to_list(length=None)
 
     result = []
     for w in workers:
-        user = await user_collection.find_one(
+        user = user_collection.find_one(
 
             {"_id": ObjectId(w["userId"])},
             {"fullName": 1, "phone": 1, "city": 1}
@@ -103,11 +103,11 @@ async def reject_worker(worker_id: str):
 
 
 # Dashboard stats
-async def get_admin_dashboard():
-    total_users = await user_collection.count_documents({})
-    total_workers = await worker_collection.count_documents({})
-    pending_workers = await worker_collection.count_documents({"status": "pending"})
-    approved_workers = await worker_collection.count_documents({"status": "approved"})  
+def get_admin_dashboard():
+    total_users =  user_collection.count_documents({})
+    total_workers = worker_collection.count_documents({})
+    pending_workers = worker_collection.count_documents({"status": "pending"})
+    approved_workers =  worker_collection.count_documents({"status": "approved"})  
 
     return {
         "total_users": total_users,

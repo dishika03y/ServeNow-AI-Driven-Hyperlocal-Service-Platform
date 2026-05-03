@@ -25,16 +25,16 @@ router = APIRouter(
 # ✅ Dashboard
 @router.get("/dashboard")
 async def dashboard(admin=Depends(get_admin_user)):
-    return await get_admin_dashboard()
+    return get_admin_dashboard()
 
 
 # ✅ Get workers list (filter by status)
 @router.get("/workers")
-async def list_workers(
+def list_workers(
     status: str = Query(None, description="pending/approved/rejected"),
     admin=Depends(get_admin_user)
 ):
-    workers = await get_workers_by_status(status)
+    workers = get_workers_by_status(status)
     return {
         "total": len(workers),
         "data": workers
