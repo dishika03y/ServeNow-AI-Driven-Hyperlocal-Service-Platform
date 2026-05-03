@@ -279,4 +279,77 @@ def get_worker_profile(current_user=Depends(get_current_user)):
         "isLive": worker.get("isLive", False),
         "status": worker.get("status", "PENDING")
     }
-    
+
+@router.post("/verify-all")
+def verify_all(current_user=Depends(get_current_user)):
+
+    worker = worker_collection.find_one(
+        {"userId": current_user["_id"]},
+        {"_id": 1, "documents": 1}
+    )
+
+    if not worker or "documents" not in worker:
+        raise HTTPException(status_code=400, detail="Documents not uploaded")
+
+    try:
+        # ─────────────────────────────
+        # 1. OCR (YOUR EXISTING SERVICE)
+        # ─────────────────────────────
+        front_text = extract_text_from_image(worker["documents"]["aadhaarFront"])
+        back_text = extract_text_from_image(worker["documents"]["aadhaarBack"])
+
+        aadhaar_data = parse_aadhaar_text(front_text)
+
+        # ─────────────────────────────
+        # 2. FACE MATCH (YOUR EXISTING SERVICE)
+        # ─────────────────────────────
+        face_result = compare_faces(
+            worker["documents"]["aadhaarFront"],
+            worker["documents"]["selfieImage"]
+        )
+
+        # ─────────────────────────────
+        # 3. DECISION LOGIC (MINIMAL, SAME AS YOUR FINAL VERIFY)
+        # ─────────────────────────────
+        num = str(aadhaar_data.get("aadhaarNumber", ""))
+        is_valid = len(num) == 12 and num.isdigit()
+
+        face_score = face_result.get("score", 0)
+
+        if is_valid and face_score >= 0.8:
+            status = "HIGH_CONFIDENCE_MATCH"
+            final_status = "APPROVED"
+        elif is_valid and face_score >= 0.5:
+            status = "MANUAL_CHECK_REQUIRED"
+            final_status = "PENDING_REVIEW"
+        else:
+            status = "POTENTIAL_FRAUD_FLAG"
+            final_status = "REJECTED"
+
+        # ─────────────────────────────
+        # 4. DB UPDATE
+        # ─────────────────────────────
+        worker_collection.update_one(
+            {"_id": worker["_id"]},
+            {
+                "$set": {
+                    "aadhaarData": aadhaar_data,
+                    "faceMatch": face_result,
+                    "internalVerificationScore": status,
+                    "status": final_status,
+                    "verificationStage": "COMPLETED_AWAITING_REVIEW"
+                }
+            }
+        )
+
+        return {
+            "message": "Verification completed",
+            "status": final_status,
+            "internal_status": status,
+            "aadhaar": aadhaar_data,
+            "face": face_result
+        }
+
+    except Exception as e:
+        print("VERIFY-ALL ERROR:", str(e))
+        raise HTTPException(status_code=500, detail="Verification failed")

@@ -17,7 +17,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Svg, { Path, Circle, Rect, Polyline } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { apiRequest } from "@/src/api/api";
 
 const C = {
@@ -37,6 +37,7 @@ const C = {
   successBorder: "#BBF7D0",
   success: "#166534",
 };
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DocKey = "aadhaar_front" | "aadhaar_back" | "selfie";
 type DocStatus = "pending" | "approved" | "rejected";
@@ -48,6 +49,20 @@ type DocSlot = {
   icon: keyof typeof Ionicons.glyphMap;
 };
 type DocsState = Partial<Record<DocKey, DocData>>;
+
+// ─── SAFE JSON HANDLER ────────────────────────────────
+const safeJson = async (res: any) => {
+  try {
+    if (!res) return null;
+    if (typeof res.json === "function") {
+      return await res.json();
+    }
+    return res;
+  } catch (e) {
+    console.log("safeJson error:", e);
+    return null;
+  }
+};
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const getStorageKey = async () => {
@@ -91,38 +106,61 @@ const STATUS_CONFIG: Record<
   rejected: { label: "Rejected", color: "#c0392b", bg: "#fdecea" },
 };
 
-const safeJson = async (res: Response) => {
-  const text = await res.text();
+// ─── VERIFY ALL API ───────────────────────────
+const verifyAllAPI = async () => {
+  const token = await AsyncStorage.getItem("access_token");
+  console.log("🚀 VERIFY-ALL API CALLED");
 
   try {
-    return JSON.parse(text);
-  } catch (e) {
-    console.log("Non-JSON response:", text);
-    return { message: text }; // fallback so app doesn't crash
+    const res = await apiRequest("/workers/verify-all", "POST", null, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("RAW RESPONSE:", res);
+    const data = await safeJson(res);
+    console.log("PARSED VERIFY DATA:", data);
+
+    return {
+      ok: res?.ok ?? true,
+      data,
+    };
+  } catch (err) {
+    console.log("VERIFY-ALL ERROR:", err);
+    return {
+      ok: false,
+      data: err,
+    };
   }
 };
+
+// ─── UPLOAD API ─────────────────────────────────────
 const uploadDocumentsAPI = async (docs: DocsState) => {
   const token = await AsyncStorage.getItem("access_token");
-
   const formData = new FormData();
 
-  formData.append("aadhaar_front", {
-    uri: docs.aadhaar_front?.uri,
-    name: "aadhaar_front.jpg",
-    type: "image/jpeg",
-  } as any);
-
-  formData.append("aadhaar_back", {
-    uri: docs.aadhaar_back?.uri,
-    name: "aadhaar_back.jpg",
-    type: "image/jpeg",
-  } as any);
-
-  formData.append("selfie", {
-    uri: docs.selfie?.uri,
-    name: "selfie.jpg",
-    type: "image/jpeg",
-  } as any);
+  if (docs.aadhaar_front?.uri) {
+    formData.append("aadhaar_front", {
+      uri: docs.aadhaar_front.uri,
+      name: "aadhaar_front.jpg",
+      type: "image/jpeg",
+    } as any);
+  }
+  if (docs.aadhaar_back?.uri) {
+    formData.append("aadhaar_back", {
+      uri: docs.aadhaar_back.uri,
+      name: "aadhaar_back.jpg",
+      type: "image/jpeg",
+    } as any);
+  }
+  if (docs.selfie?.uri) {
+    formData.append("selfie", {
+      uri: docs.selfie.uri,
+      name: "selfie.jpg",
+      type: "image/jpeg",
+    } as any);
+  }
 
   const res = await apiRequest("/workers/upload-documents", "POST", formData, {
     headers: {
@@ -131,48 +169,9 @@ const uploadDocumentsAPI = async (docs: DocsState) => {
     },
   });
 
-  return res.json();
+  return safeJson(res);
 };
 
-const verifyAadharAPI = async () => {
-  const token = await AsyncStorage.getItem("access_token");
-
-  const res = await apiRequest("/workers/verify-aadhaar", "POST", null, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  const data = await safeJson(res);
-
-  console.log("AADHAAR STATUS:", res.status);
-  console.log("AADHAAR DATA:", data);
-
-  return {
-    ok: res.ok,
-    data,
-  };
-};
-const verifyFaceAPI = async () => {
-  const token = await AsyncStorage.getItem("access_token");
-
-  const res = await apiRequest("/workers/verify-face", "POST", null, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await safeJson(res);
-
-  console.log("FACE STATUS:", res.status);
-  console.log("FACE DATA:", data);
-
-  return {
-    ok: res.ok,
-    data,
-  };
-};
 // ─── Doc Card ─────────────────────────────────────────────────────────────────
 function DocCard({
   slot,
@@ -244,6 +243,7 @@ function DocCard({
     </TouchableOpacity>
   );
 }
+
 function BackIcon() {
   return (
     <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
@@ -257,6 +257,7 @@ function BackIcon() {
     </Svg>
   );
 }
+
 // ─── Upload Sheet ─────────────────────────────────────────────────────────────
 function UploadSheet({
   visible,
@@ -342,7 +343,6 @@ export default function VerificationScreen() {
     const loadDocs = async () => {
       const key = await getStorageKey();
       const saved = await AsyncStorage.getItem(key);
-
       if (saved) setDocs(JSON.parse(saved));
     };
 
@@ -351,7 +351,6 @@ export default function VerificationScreen() {
 
   const persist = async (updated: DocsState) => {
     setDocs(updated);
-
     const key = await getStorageKey();
     await AsyncStorage.setItem(key, JSON.stringify(updated));
   };
@@ -396,56 +395,39 @@ export default function VerificationScreen() {
   const handleSubmit = async () => {
     try {
       if (!allDone) {
-        Alert.alert("Incomplete", "Please upload all required documents.");
+        Alert.alert("Incomplete", "Upload all documents first");
         return;
       }
 
-      // 🔹 Step 1: Upload Docs
+      console.log("STEP 1: Uploading docs...");
       const uploadRes = await uploadDocumentsAPI(docs);
-      console.log("Upload:", uploadRes);
+      console.log("UPLOAD RESULT:", uploadRes);
 
       if (
         !uploadRes ||
         uploadRes.message !== "Documents and Portfolio uploaded successfully"
       ) {
-        Alert.alert("Error", "Document upload failed");
+        Alert.alert("Error", "Upload failed");
         return;
       }
 
-      // 🔹 Step 2: Aadhaar Verification
-      const aadharRes = await verifyAadharAPI();
-      console.log("Aadhar:", aadharRes);
+      console.log("STEP 2: Calling VERIFY-ALL...");
+      const verifyRes = await verifyAllAPI();
+      console.log("FINAL VERIFY RESULT:", verifyRes);
 
-      if (!aadharRes.ok) {
-        Alert.alert(
-          "Error",
-          aadharRes.data?.message ||
-            aadharRes.data?.detail ||
-            "Aadhaar verification failed",
-        );
+      if (!verifyRes.ok) {
+        Alert.alert("Error", verifyRes?.data?.detail || "Verification failed");
         return;
       }
 
-      // 🔹 Step 3: Face Verification
-      const faceRes = await verifyFaceAPI();
-      console.log("Face:", faceRes);
-
-      if (!faceRes.ok) {
-        Alert.alert(
-          "Error",
-          faceRes.data?.message || "Face verification failed",
-        );
-        return;
-      }
-
-      // ✅ SUCCESS FLOW
-      Alert.alert("Success", "Verification submitted successfully!");
+      Alert.alert("Success", "Verification completed!");
       router.push("/worker/pending-status");
-    } catch (error) {
-      console.log(error);
+    } catch (err) {
+      console.log("HANDLE SUBMIT ERROR:", err);
       Alert.alert("Error", "Something went wrong");
     }
   };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#EDE9E1" />
@@ -460,6 +442,7 @@ export default function VerificationScreen() {
         </View>
         <Text style={styles.navTag}>HYPERLOCAL AI</Text>
       </View>
+
       <TouchableOpacity
         style={styles.backBtn}
         onPress={() => router.replace("/worker/become-worker")}
@@ -467,12 +450,13 @@ export default function VerificationScreen() {
       >
         <BackIcon />
       </TouchableOpacity>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
         {/* Header */}
-        <View style={styles.headerRow}>
+        <View style={styles.headerRow || styles.headerRow}>
           <Text style={styles.heading}>
             Verify <Text style={styles.headingItalic}>Identity.</Text>
           </Text>
@@ -569,7 +553,14 @@ export default function VerificationScreen() {
         </TouchableOpacity>
 
         {/* Trust bar */}
-        <View style={styles.trustBar}>
+        <View
+          style={
+            styles.trustBar ||
+            styles.trustBar ||
+            styles.trustBar ||
+            styles.trustBar
+          }
+        >
           <Text style={styles.trustItem}>🔒 SSL secured</Text>
           <View style={styles.trustDot} />
           <Text style={styles.trustItem}>✓ Data encrypted</Text>
@@ -589,23 +580,26 @@ export default function VerificationScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+/// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#EDE9E1" },
+  safeArea: { flex: 1, backgroundColor: "#EDE9E1" } as any,
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: C.white,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: C.creamBorder,
+    borderColor: "#E8E2D8",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: C.navy,
+    shadowColor: "#081F5C",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
+    marginLeft: 20,
+    marginTop: 8,
+    marginBottom: 8,
   },
   scroll: { paddingBottom: 40 },
   navbar: {
@@ -636,10 +630,10 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     color: "#8a9ab0",
   },
-  headerRow: { paddingHorizontal: 20, marginBottom: 20 },
   heading: { fontSize: 32, fontWeight: "800", color: "#1a2f4e" },
   headingItalic: { fontStyle: "italic", fontWeight: "400", color: "#7BAFD4" },
   subtext: { fontSize: 13, color: "#8a9ab0", marginTop: 4, lineHeight: 19 },
+  headerRow: { paddingHorizontal: 20, marginBottom: 20 } as any,
   progressCard: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -673,6 +667,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
     gap: 6,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   allDoneText: { fontSize: 12, color: "#1a7a4a", fontWeight: "600" },
   docCard: {
@@ -851,7 +847,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 16,
-  },
+  } as any,
   trustItem: { fontSize: 11, color: "#8a9ab0" },
   trustDot: {
     width: 4,
@@ -870,7 +866,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 24,
-    paddingBottom: Platform.OS === "ios" ? 44 : 28,
+    paddingBottom: 28,
     paddingTop: 16,
   },
   sheetHandle: {
