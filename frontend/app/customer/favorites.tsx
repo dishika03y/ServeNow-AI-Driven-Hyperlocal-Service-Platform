@@ -27,7 +27,7 @@ export default function FavoritesScreen() {
   const fetchFav = async () => {
     try {
       const res = await apiRequest("/customer/favorites", "GET");
-      setList(res || []);
+      setList(res.data || []);
     } catch {
       setList(STATIC_FAV);
     } finally {

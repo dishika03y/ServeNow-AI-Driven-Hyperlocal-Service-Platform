@@ -37,7 +37,7 @@ export default function NotificationsScreen() {
   const fetchNotifications = async () => {
     try {
       const res = await apiRequest("/customer/notifications", "GET");
-      setList(res || []);
+      setList(res.data || []);
     } catch {
       setList(STATIC_NOTIFICATIONS);
     } finally {

@@ -40,7 +40,7 @@ export default function CustomerLiveScreen() {
       if (!res) {
         setBooking(null);
       } else {
-        setBooking(res);
+        setBooking(res.data);
       }
     } catch (error) {
       console.log("Live API failed, using static fallback");

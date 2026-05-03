@@ -9,6 +9,7 @@ from app.services.customer_service import (
 )
 
 from  app.routes.user_routes import get_current_user
+from app.core.response import SuccessResponse, ErrorResponse
 
 router = APIRouter(prefix="/customer", tags=["Customer"])
 
@@ -21,14 +22,11 @@ async def dashboard(user=Depends(get_current_user)):
 
     data = await get_dashboard(user["id"])
 
-    return {
-        "success": True,
-        "data": {
-            "stats": data["stats"],
-            "activeBooking": data["activeBooking"],
-            "recent": data["recent"]
-        }
-    }
+    return SuccessResponse(data={
+        "stats": data["stats"],
+        "activeBooking": data["activeBooking"],
+        "recent": data["recent"]
+    })    
 
 
 # -----------------------------
@@ -39,10 +37,7 @@ async def live(user=Depends(get_current_user)):
 
     booking = await get_live_booking(user["id"])
 
-    return {
-        "success": True,
-        "data": booking
-    }
+    return SuccessResponse(data=booking)
 
 
 # -----------------------------
@@ -53,10 +48,7 @@ async def history(user=Depends(get_current_user)):
 
     data = await get_history(user["id"])
 
-    return {
-        "success": True,
-        "data": data
-    }
+    return SuccessResponse(data=data)
 
 
 # -----------------------------
@@ -67,11 +59,7 @@ async def wallet(user=Depends(get_current_user)):
 
     data = await get_wallet(user["id"])
 
-    return {
-        "success": True,
-        "data": data
-    }
-
+    return SuccessResponse(data=data)
 
 # -----------------------------
 # FAVORITES
@@ -81,10 +69,7 @@ async def favorites(user=Depends(get_current_user)):
 
     data = await get_favorites(user["id"])
 
-    return {
-        "success": True,
-        "data": data
-    }
+    return SuccessResponse(data=data)
 
 
 # -----------------------------
@@ -95,7 +80,4 @@ async def notifications(user=Depends(get_current_user)):
 
     data = await get_notifications(user["id"])
 
-    return {
-        "success": True,
-        "data": data
-    }
+    return SuccessResponse(data=data)
