@@ -2,7 +2,8 @@ import pytesseract
 import shutil
 
 tesseract_path = shutil.which("tesseract")
-if tesseract_path is None:
-    raise Exception("Tesseract is not installed on server")
+
+if not tesseract_path:
+    raise Exception("Tesseract not found in container")
 
 pytesseract.pytesseract.tesseract_cmd = tesseract_path
