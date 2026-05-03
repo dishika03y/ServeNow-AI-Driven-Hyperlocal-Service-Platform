@@ -15,3 +15,4 @@ def init_db():
 user_collection = db["users"]
 service_requests_collection = db["service_requests"]
 worker_collection = db["workers"]
+booking_model = db["bookings"]

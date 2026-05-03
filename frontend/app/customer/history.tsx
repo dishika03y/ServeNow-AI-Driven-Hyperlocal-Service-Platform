@@ -53,7 +53,7 @@ export default function CustomerHistoryScreen() {
       const res = await apiRequest("/customer/history", "GET");
 
       // adjust based on your backend response shape
-      setHistory(res || []);
+      setHistory(res.data || []);
     } catch (error) {
       console.log("History API failed, using static data");
 
@@ -103,9 +103,7 @@ function HistoryCard({ item }: any) {
       <View style={styles.row}>
         <Text style={styles.date}>{item.date}</Text>
 
-        <Text style={styles.status}>
-          ● {item.status}
-        </Text>
+        <Text style={styles.status}>● {item.status}</Text>
       </View>
     </View>
   );

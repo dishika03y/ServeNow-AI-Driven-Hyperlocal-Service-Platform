@@ -34,18 +34,17 @@ export default function UserProfileScreen() {
 
   const fetchData = async () => {
     try {
-      const user = await apiRequest("/users/me", "GET");
-
+      const res = await apiRequest("/users/profile", "GET");
+      const user = res.data;
       setProfile(user);
       setIsWorker(user?.is_worker);
 
       // Worker status fetch only if needed
       if (user?.is_worker) {
         try {
-          const worker = await apiRequest("/workers/me", "GET");
-          if (worker?.status == "APPROVED") {
+          if (user?.workerStatus == "APPROVED") {
             setWorkerStatus("APPROVED");
-          } else if (worker?.status == "PENDING") {
+          } else if (user?.workerStatus == "PENDING") {
             setWorkerStatus("PENDING");
           }
         } catch {

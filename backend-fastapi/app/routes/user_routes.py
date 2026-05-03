@@ -6,8 +6,10 @@ from bson import ObjectId
 from app.database.db import user_collection, worker_collection
 from app.core.security import SECRET_KEY, ALGORITHM
 from app.schemas.user_schemas import UpdateUserSchema
-from app.services.user_service import update_user_profile
+from app.services.user_service import get_user_profile, update_user_profile
 from app.services.request_service import get_user_requests
+
+from app.utils.responses import success_response
 
 router = APIRouter(
     prefix="/users",
@@ -107,3 +109,12 @@ def my_requests(current_user=Depends(get_current_user)):
         "total": len(requests),
         "data": requests
     }
+
+# GET PROFILE (NEW UNIFIED API)
+# -----------------------------
+@router.get("/profile")
+async def user_profile(user=Depends(get_current_user)):
+
+    data = await get_user_profile(str(user["_id"]))
+
+    return success_response(data=data)

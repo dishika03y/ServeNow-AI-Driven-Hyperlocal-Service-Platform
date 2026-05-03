@@ -31,7 +31,7 @@ export default function WalletScreen() {
   const fetchWallet = async () => {
     try {
       const res = await apiRequest("/customer/wallet", "GET");
-      setWallet(res);
+      setWallet(res.data);
     } catch {
       setWallet(STATIC_WALLET);
     } finally {
