@@ -282,11 +282,11 @@ def get_worker_profile(current_user=Depends(get_current_user)):
         "status": worker.get("status", "PENDING")
     }
 
-# Initialize a thread pool for synchronous functions
 thread_pool = ThreadPoolExecutor(max_workers=3)
 
 @router.post("/verify-all")
-async def verify_all(current_user = Depends(get_current_user)):
+def verify_all(background_tasks: BackgroundTasks, current_user=Depends(get_current_user)):
+
     worker = worker_collection.find_one(
         {"userId": current_user["_id"]},
         {"_id": 1, "documents": 1}
@@ -295,69 +295,31 @@ async def verify_all(current_user = Depends(get_current_user)):
     if not worker or "documents" not in worker:
         raise HTTPException(status_code=400, detail="Documents not uploaded")
 
-    loop = asyncio.get_running_loop()
+    # 1. OCR ONLY (fast)
+    front_text = extract_text_from_image(worker["documents"]["aadhaarFront"])
+    aadhaar_data = parse_aadhaar_text(front_text)
 
-    try:
-        # Run synchronous service functions in a separate thread pool to prevent blocking the event loop
-        front_text = await loop.run_in_executor(
-            thread_pool, 
-            extract_text_from_image, 
-            worker["documents"]["aadhaarFront"]
-        )
-        back_text = await loop.run_in_executor(
-            thread_pool, 
-            extract_text_from_image, 
-            worker["documents"]["aadhaarBack"]
-        )
-        
-        aadhaar_data = await loop.run_in_executor(
-            thread_pool, 
-            parse_aadhaar_text, 
-            front_text
-        )
-
-        face_result = await loop.run_in_executor(
-            thread_pool, 
-            compare_faces, 
-            worker["documents"]["aadhaarFront"], 
-            worker["documents"]["selfieImage"]
-        )
-
-        num = str(aadhaar_data.get("aadhaarNumber", ""))
-        is_valid = len(num) == 12 and num.isdigit()
-        face_score = face_result.get("score", 0)
-
-        if is_valid and face_score >= 0.8:
-            status = "HIGH_CONFIDENCE_MATCH"
-            final_status = "APPROVED"
-        elif is_valid and face_score >= 0.5:
-            status = "MANUAL_CHECK_REQUIRED"
-            final_status = "PENDING_REVIEW"
-        else:
-            status = "POTENTIAL_FRAUD_FLAG"
-            final_status = "REJECTED"
-
-        worker_collection.update_one(
-            {"_id": worker["_id"]},
-            {
-                "$set": {
-                    "aadhaarData": aadhaar_data,
-                    "faceMatch": face_result,
-                    "internalVerificationScore": status,
-                    "status": final_status,
-                    "verificationStage": "COMPLETED_AWAITING_REVIEW"
-                }
+    # 2. Save OCR result immediately
+    worker_collection.update_one(
+        {"_id": worker["_id"]},
+        {
+            "$set": {
+                "aadhaarData": aadhaar_data,
+                "verificationStage": "OCR_COMPLETED",
+                "status": "PENDING_FACE_VERIFICATION"
             }
-        )
-
-        return {
-            "message": "Verification completed",
-            "status": final_status,
-            "internal_status": status,
-            "aadhaar": aadhaar_data,
-            "face": face_result
         }
+    )
 
-    except Exception as e:
-        print("VERIFY-ALL ERROR:", str(e))
-        raise HTTPException(status_code=500, detail="Verification failed")
+    # 3. trigger face match in background
+    background_tasks.add_task(
+        run_face_verification,
+        worker["documents"]["aadhaarFront"],
+        worker["documents"]["selfieImage"],
+        worker["_id"]
+    )
+
+    return {
+        "message": "Verification started",
+        "stage": "OCR_COMPLETED"
+    }
