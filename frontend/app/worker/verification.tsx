@@ -44,7 +44,12 @@ type DocSlot = { key: DocKey; label: string; hint: string; icon: keyof typeof Io
 type DocsState = Partial<Record<DocKey, DocData>>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const STORAGE_KEY = "kyc_docs";
+const getStorageKey = async () => {
+  const userId = await AsyncStorage.getItem("user_id");
+  return `kyc_docs_${userId}`;
+};
+
+
 const BASE_URL = "https://serservenow-backend.onrender.com";
 const REQUIRED_DOCS: DocSlot[] = [
   { key: "aadhaar_front", label: "Aadhaar Front", hint: "Front side of your card", icon: "card-outline" },
@@ -252,15 +257,22 @@ export default function VerificationScreen() {
   const progress      = uploadedCount / REQUIRED_DOCS.length;
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved) setDocs(JSON.parse(saved));
-    });
-  }, []);
+  const loadDocs = async () => {
+    const key = await getStorageKey();
+    const saved = await AsyncStorage.getItem(key);
 
-  const persist = async (updated: DocsState) => {
-    setDocs(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (saved) setDocs(JSON.parse(saved));
   };
+
+  loadDocs();
+}, []);
+
+const persist = async (updated: DocsState) => {
+  setDocs(updated);
+
+  const key = await getStorageKey();
+  await AsyncStorage.setItem(key, JSON.stringify(updated));
+};
 
   const openSheet = (slot: DocSlot) => { setActiveSlot(slot); setSheetVisible(true); };
 
