@@ -1,6 +1,7 @@
 import { apiRequest } from "./api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { USE_MOCK } from "../config/mock";
+import axios from "axios";
 
 // 🧪 MOCK DATA
 const mockWorkers = [
@@ -49,4 +50,61 @@ export const rejectWorker = async (worker_id: string) => {
     );
   }
   return apiRequest(`/admin/reject/${worker_id}`, "POST");
+};
+/* ✅ NEW FUNCTION (IMPORTANT) */
+export const getWorkers = async (status: string) => {
+  const res = await axios.get(`/admin/workers?status=${status}`);
+  return res.data;
+};    
+
+// ================== BOOKINGS APIs (ADDED) ==================
+
+// ✅ Get all bookings
+export const getAllBookings = async () => {
+  if (USE_MOCK) {
+    return new Promise((res) =>
+      setTimeout(
+        () =>
+          res([
+            {
+              _id: "1",
+              service: "Plumbing",
+              userName: "Rahul",
+              workerName: "Ramesh",
+              date: "2026-05-04",
+              price: 500,
+              status: "pending",
+            },
+            {
+              _id: "2",
+              service: "Electrician",
+              userName: "Amit",
+              workerName: "Suresh",
+              date: "2026-05-05",
+              price: 700,
+              status: "completed",
+            },
+          ]),
+        800
+      )
+    );
+  }
+
+  return apiRequest("/admin/bookings", "GET");
+};
+
+// ✅ Update booking status
+export const updateBookingStatus = async (
+  booking_id: string,
+  status: string
+) => {
+  if (USE_MOCK) {
+    return new Promise((res) =>
+      setTimeout(() => res({ message: "Updated" }), 500)
+    );
+  }
+
+  return apiRequest(`/admin/bookings/${booking_id}/status`, "PATCH", {
+    status,
+  });
 };

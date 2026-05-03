@@ -1,33 +1,16 @@
-// app/admin/_layout.tsx
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-export default function AdminLayout() {
+export default function Layout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: { backgroundColor: '#0B2239' },
-        tabBarActiveTintColor: '#00C897',
-        tabBarInactiveTintColor: '#A0AEC0',
-      }}
-    >
+    <Tabs screenOptions={{ headerShown: false }}>
+      
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={20} color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="workers"
-        options={{
-          title: 'Workers',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="people" size={20} color={color} />
+          title: "Dashboard",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
           ),
         }}
       />
@@ -35,22 +18,14 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="bookings"
         options={{
-          title: 'Bookings',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="document-text" size={20} color={color} />
+          title: "Bookings",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar" size={size} color={color} />
           ),
         }}
       />
 
-      <Tabs.Screen
-        name="payments"
-        options={{
-          title: 'Payments',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="card" size={20} color={color} />
-          ),
-        }}
-      />
+     
     </Tabs>
   );
 }
