@@ -1,5 +1,8 @@
 import pytesseract
+import shutil
 
-TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+tesseract_path = shutil.which("tesseract")
+if tesseract_path is None:
+    raise Exception("Tesseract is not installed on server")
 
-pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+pytesseract.pytesseract.tesseract_cmd = tesseract_path
