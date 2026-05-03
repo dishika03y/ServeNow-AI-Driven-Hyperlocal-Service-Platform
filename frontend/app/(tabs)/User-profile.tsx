@@ -23,12 +23,14 @@ const MUTED = "rgba(8,31,92,0.45)";
 const BORDER = "rgba(8,31,92,0.08)";
 const DANGER = "#D94F4F";
 
-export default async function CustomerProfileScreen() {
+export default function UserProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [isWorker, setIsWorker] = useState<any>(false);
-  const [workerStatus, setWorkerStatus] = useState(null);
+
+  const [isWorker, setIsWorker] = useState(false);
+  const [workerStatus, setWorkerStatus] = useState<
+    "NONE" | "PENDING" | "APPROVED"
+  >("NONE");
 
   const fetchData = async () => {
     try {
@@ -37,11 +39,23 @@ export default async function CustomerProfileScreen() {
       setProfile(user);
       setIsWorker(user?.is_worker);
 
-      // 🚧 TEMP: stats API not ready
-      // const statRes = await apiRequest("/users/me/stats", "GET");
-      // setStats(statRes);
+      // Worker status fetch only if needed
+      if (user?.is_worker) {
+        try {
+          const worker = await apiRequest("/workers/me", "GET");
+          if (worker?.status == "APPROVED") {
+            setWorkerStatus("APPROVED");
+          } else if (worker?.status == "PENDING") {
+            setWorkerStatus("PENDING");
+          }
+        } catch {
+          setWorkerStatus("NONE");
+        }
+      } else {
+        setWorkerStatus("NONE");
+      }
     } catch (error) {
-      console.log("Fetch Error:", error);
+      console.log("Profile Fetch Error:", error);
     } finally {
       setRefreshing(false);
     }
@@ -56,12 +70,9 @@ export default async function CustomerProfileScreen() {
     fetchData();
   }, []);
 
-  const worker = await apiRequest("/worker/me", "GET");
-  setWorkerStatus(worker.status);
-  const handleWorker = () => {
-    console.log("STATUS:", workerStatus);
-
-    if (isWorker === true || workerStatus === "APPROVED") {
+  // 🔥 Worker Action Handler (CLEAN)
+  const handleWorkerPress = () => {
+    if (workerStatus === "APPROVED") {
       router.push("/(worker-tabs)/dashboard");
     } else if (workerStatus === "PENDING") {
       router.push("/worker/verification");
@@ -69,15 +80,15 @@ export default async function CustomerProfileScreen() {
       router.push("/worker/become-worker");
     }
   };
+
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure?", [
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
         style: "destructive",
-
         onPress: async () => {
           await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
-
           router.replace("/auth/login");
         },
       },
@@ -88,7 +99,21 @@ export default async function CustomerProfileScreen() {
     profile?.fullName
       ?.split(" ")
       .map((x: string) => x[0])
-      .join("") || "U";
+      .join("")
+      .toUpperCase() || "U";
+
+  // 🔥 Worker UI Text Logic
+  const getWorkerTitle = () => {
+    if (workerStatus === "APPROVED") return "👷 Worker Dashboard";
+    if (workerStatus === "PENDING") return "⏳ Application Pending";
+    return "🚀 Become a Worker";
+  };
+
+  const getWorkerSub = () => {
+    if (workerStatus === "APPROVED") return "Manage your jobs and earnings";
+    if (workerStatus === "PENDING") return "Complete your verification process";
+    return "Start earning by offering services";
+  };
 
   return (
     <ScrollView
@@ -103,53 +128,22 @@ export default async function CustomerProfileScreen() {
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
 
-        <Text style={styles.name}>{profile?.fullName}</Text>
-
-        <Text style={styles.location}>📍 {profile?.city}</Text>
+        <Text style={styles.name}>{profile?.fullName || "User"}</Text>
+        <Text style={styles.location}>📍 {profile?.city || "Unknown"}</Text>
       </View>
 
-      {/* STATS */}
-      <View style={styles.statsRow}>
-        <Stat value={stats?.total_bookings || 0} label="Bookings" />
-
-        <Stat value={stats?.active_bookings || 0} label="Active" />
-
-        <Stat value={stats?.completed_bookings || 0} label="Completed" />
-      </View>
-
-      {/* BECOME WORKER */}
+      {/* WORKER SECTION */}
       <TouchableOpacity
         style={styles.workerCard}
-        onPress={handleWorker}
+        onPress={handleWorkerPress}
         activeOpacity={0.85}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Text style={{ fontSize: 26 }}>{isWorker ? "👷‍♂️" : "🚀"}</Text>
-
-          <View>
-            <Text style={styles.workerTitle}>
-              {isWorker === true
-                ? "Switch to Worker Mode"
-                : workerStatus === "PENDING"
-                  ? "Check Status"
-                  : "Become a Worker"}
-            </Text>
-
-            <Text style={styles.workerSub}>
-              {isWorker === true
-                ? "Manage jobs, earnings & profile"
-                : "Start earning by offering services"}
-            </Text>
-          </View>
-        </View>
-
-        <Text style={{ color: "#BAD6EB", marginTop: 10, fontWeight: "600" }}>
-          {isWorker === true ? "Open →" : "Apply →"}
-        </Text>
+        <Text style={styles.workerTitle}>{getWorkerTitle()}</Text>
+        <Text style={styles.workerSub}>{getWorkerSub()}</Text>
       </TouchableOpacity>
 
-      {/* MY SERVICES */}
-      <Text style={styles.sectionTitle}>MY SERVICES</Text>
+      {/* SERVICES */}
+      <Text style={styles.sectionTitle}>MY ACTIVITY</Text>
 
       <Menu
         icon="clipboard-outline"
@@ -159,7 +153,7 @@ export default async function CustomerProfileScreen() {
 
       <Menu
         icon="time-outline"
-        title="Track Current Job"
+        title="Track Active Booking"
         onPress={() => router.push("/customer/live")}
       />
 
@@ -184,7 +178,6 @@ export default async function CustomerProfileScreen() {
         onPress={() => router.push("/customer/edit-profile")}
       />
 
-      {/* SETTINGS ADDED HERE */}
       <Menu
         icon="settings-outline"
         title="Settings"
@@ -207,35 +200,20 @@ export default async function CustomerProfileScreen() {
   );
 }
 
-function Stat({ value, label }: any) {
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function Menu({ icon, title, onPress, danger = false }: any) {
   return (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
       <Ionicons name={icon} size={22} color={danger ? DANGER : NAVY} />
-
       <Text style={[styles.menuText, danger && { color: DANGER }]}>
         {title}
       </Text>
-
-      <Ionicons name="chevron-forward" size={18} color={MUTED} />
+      <Ionicons name="chevron-forward" size={18} color="gray" />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: CREAM,
-  },
+  container: { flex: 1, backgroundColor: CREAM },
 
   header: {
     alignItems: "center",
@@ -270,32 +248,6 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
 
-  statsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-
-  statCard: {
-    flex: 1,
-    backgroundColor: WHITE,
-    borderRadius: 18,
-    padding: 18,
-    alignItems: "center",
-  },
-
-  statValue: {
-    color: NAVY,
-    fontWeight: "800",
-    fontSize: 22,
-  },
-
-  statLabel: {
-    color: MUTED,
-    marginTop: 4,
-    fontSize: 12,
-  },
-
   workerCard: {
     backgroundColor: NAVY,
     margin: 20,
@@ -306,17 +258,19 @@ const styles = StyleSheet.create({
   workerTitle: {
     color: WHITE,
     fontWeight: "800",
+    fontSize: 16,
   },
 
   workerSub: {
     color: "#BAD6EB",
-    marginTop: 4,
+    marginTop: 6,
+    fontSize: 12,
   },
 
   sectionTitle: {
-    marginTop: 28,
+    marginTop: 20,
     marginLeft: 20,
-    marginBottom: 12,
+    marginBottom: 10,
     color: MUTED,
     fontWeight: "700",
     fontSize: 11,
