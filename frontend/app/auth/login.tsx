@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "../../src/api/api";
 import Svg, { Path, Circle, Rect, Polygon } from "react-native-svg";
+import { handleUserRouting } from "@/src/utils/navigation";
 
 const { width } = Dimensions.get("window");
 
@@ -248,16 +249,10 @@ export default function LoginScreen() {
             Authorization: `Bearer ${token}`,
           },
         });
-        console.log("USER DATA:", userData);
+        await AsyncStorage.setItem("user_role", userData.role);
 
         // ✅ DIRECT DECISION
-        if (userData?.is_worker) {
-          router.replace("/(worker-tabs)/dashboard");
-        } else if (userData?.role?.trim() === "ADMIN") {
-          router.replace("/admin/dashboard");
-        } else {
-          router.replace("/(tabs)/home");
-        }
+        handleUserRouting(userData);
       } else {
         setError("Login failed");
       }

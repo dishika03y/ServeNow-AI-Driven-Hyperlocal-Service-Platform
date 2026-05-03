@@ -11,8 +11,33 @@ import { useEffect, useRef } from "react";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path, Circle } from "react-native-svg";
+import { apiRequest } from "@/src/api/api";
+import { handleUserRouting } from "@/src/utils/navigation";
 
 const { width: W } = Dimensions.get("window");
+
+useEffect(() => {
+  const init = async () => {
+    try {
+      const token = await AsyncStorage.getItem("access_token");
+
+      if (!token) {
+        router.replace("/auth/login");
+        return;
+      }
+
+      // 🔥 THIS IS WHAT YOU ARE MISSING OR DOING WRONG
+      const user = await apiRequest("/users/me", "GET");
+
+      handleUserRouting(user);
+    } catch (err) {
+      console.log("Init Error:", err);
+      router.replace("/auth/login");
+    }
+  };
+
+  init();
+}, []);
 
 const C = {
   navy: "#081F5C",
@@ -27,8 +52,16 @@ const C = {
 function LogoMark() {
   return (
     <Svg width={44} height={44} viewBox="0 0 48 48" fill="none">
-      <Path d="M24 4L38 12V28L24 36L10 28V12L24 4Z" fill={C.sky} opacity={0.9} />
-      <Path d="M24 14L31 18V26L24 30L17 26V18L24 14Z" fill={C.sky} opacity={0.35} />
+      <Path
+        d="M24 4L38 12V28L24 36L10 28V12L24 4Z"
+        fill={C.sky}
+        opacity={0.9}
+      />
+      <Path
+        d="M24 14L31 18V26L24 30L17 26V18L24 14Z"
+        fill={C.sky}
+        opacity={0.35}
+      />
       <Circle cx={24} cy={22} r={4.5} fill={C.cream} />
       <Circle cx={24} cy={22} r={2} fill={C.navy} />
     </Svg>
@@ -48,8 +81,12 @@ function PulseRing({ delay = 0 }: { delay?: number }) {
           easing: Easing.out(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
-      ])
+        Animated.timing(anim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ]),
     );
     loop.start();
     return () => loop.stop();
@@ -92,7 +129,11 @@ export default function Splash() {
   useEffect(() => {
     // animations
     Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(fade, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
       Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
     ]).start();
 
@@ -119,23 +160,23 @@ export default function Splash() {
 
     // 🔥 REAL LOGIN CHECK
     const checkAuth = async () => {
-  const token = await AsyncStorage.getItem("access_token");
-  const role = await AsyncStorage.getItem("role"); // 👈 ADD THIS
+      const token = await AsyncStorage.getItem("access_token");
+      const role = await AsyncStorage.getItem("role"); // 👈 ADD THIS
 
-  setTimeout(() => {
-    if (token) {
-      if (role === "Admin") {
-        router.replace("/admin/dashboard");
-      } else if (role === "worker") {
-        router.replace("/worker/home");
-      } else {
-        router.replace("/(tabs)/home");
-      }
-    } else {
-      router.replace("/auth/login");
-    }
-  }, 2000);
-};
+      setTimeout(() => {
+        if (token) {
+          if (role === "Admin") {
+            router.replace("/admin/dashboard");
+          } else if (role === "worker") {
+            router.replace("/worker/home");
+          } else {
+            router.replace("/(tabs)/home");
+          }
+        } else {
+          router.replace("/auth/login");
+        }
+      }, 2000);
+    };
 
     checkAuth();
   }, []);
@@ -153,7 +194,9 @@ export default function Splash() {
       <View style={st.bgCircle2} />
 
       {/* Logo */}
-      <Animated.View style={[st.logoWrap, { opacity: fade, transform: [{ scale }] }]}>
+      <Animated.View
+        style={[st.logoWrap, { opacity: fade, transform: [{ scale }] }]}
+      >
         <View style={st.outerRing}>
           <PulseRing />
           <View style={st.innerRing}>
@@ -163,7 +206,9 @@ export default function Splash() {
       </Animated.View>
 
       {/* Content */}
-      <Animated.View style={{ opacity: contentFade, transform: [{ translateY: contentY }] }}>
+      <Animated.View
+        style={{ opacity: contentFade, transform: [{ translateY: contentY }] }}
+      >
         <Text style={st.brand}>ServeNow</Text>
 
         <Text style={st.progressLabel}>Loading your experience…</Text>

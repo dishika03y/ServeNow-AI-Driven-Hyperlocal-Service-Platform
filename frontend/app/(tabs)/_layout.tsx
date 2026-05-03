@@ -45,7 +45,7 @@ export default function Layout() {
 
       {/* SERVICES */}
       <Tabs.Screen
-        name="All Services"
+        name="All-Services"
         options={{
           tabBarIcon: ({ focused }) => (
             <BottomTab

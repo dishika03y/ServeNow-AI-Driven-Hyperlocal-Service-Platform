@@ -40,14 +40,12 @@ export default function CustomerDashboard() {
           { id: 2, service_type: "Cleaning", status: "ongoing" },
         ],
       };
-
-      const worker = await apiRequest("/workers/me", "GET");
-
-      setWorkerStatus(worker?.status || "NONE");
-
       setProfile(user);
+
       setBookings(bookingRes.data || []);
       setIsWorker(user?.is_worker);
+      const worker = await apiRequest("/workers/me", "GET");
+      setWorkerStatus(worker?.status || "NONE");
     } catch (e) {
       console.log(e);
     } finally {
@@ -110,7 +108,7 @@ export default function CustomerDashboard() {
         {/* ✅ FIXED ROUTE */}
         <TouchableOpacity
           style={styles.avatar}
-          onPress={() => router.push("/(tabs)/profile")}
+          onPress={() => router.push("/(tabs)/User-profile")}
         >
           <Text style={{ color: WHITE }}>{initials}</Text>
         </TouchableOpacity>
@@ -119,7 +117,7 @@ export default function CustomerDashboard() {
       {/* PRIMARY CTA */}
       <TouchableOpacity
         style={styles.cta}
-        onPress={() => router.push("/(tabs)/home")}
+        onPress={() => router.push("/(tabs)/All-Services")}
       >
         <Text style={styles.ctaText}>🛠️ Book a Service</Text>
       </TouchableOpacity>
@@ -156,7 +154,9 @@ export default function CustomerDashboard() {
       {/* WORKER CTA */}
       <TouchableOpacity style={styles.worker} onPress={handleWorker}>
         <Text style={styles.workerTitle}>
-          {isWorker ? "👷 Open Worker Dashboard" : "🚀 Become a Worker"}
+          {isWorker || workerStatus === "APPROVED"
+            ? "👷 Open Worker Dashboard"
+            : "🚀 Become a Worker"}
         </Text>
         <Text style={styles.workerSub}>Earn money by offering services</Text>
       </TouchableOpacity>
