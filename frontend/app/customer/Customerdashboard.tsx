@@ -25,6 +25,15 @@ export default function CustomerDashboard() {
   const [workerStatus, setWorkerStatus] = useState<
     "NONE" | "PENDING" | "APPROVED"
   >("NONE");
+  const [workerStage, setWorkerStage] = useState<
+    | "NONE"
+    | "BASIC_DETAILS_SUBMITTED"
+    | "DOCUMENTS_UPLOADED"
+    | "OCR_COMPLETED"
+    | "FACE_COMPLETED"
+    | "COMPLETED_AWAITING_REVIEW"
+  >("NONE");
+  const [isLive, setIsLive] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -46,6 +55,8 @@ export default function CustomerDashboard() {
       setIsWorker(user?.is_worker);
       const worker = await apiRequest("/workers/me", "GET");
       setWorkerStatus(worker?.status || "NONE");
+      setWorkerStage(worker?.verificationStage || "NONE");
+      setIsLive(worker?.isLive || false);
     } catch (e) {
       console.log(e);
     } finally {
@@ -81,13 +92,27 @@ export default function CustomerDashboard() {
 
   // ---------- HANDLERS ----------
   const handleWorker = () => {
-    if (isWorker === true || workerStatus === "APPROVED") {
+    // already approved worker
+    if (workerStatus === "APPROVED" || isLive === true) {
       router.push("/(worker-tabs)/dashboard");
-    } else if (workerStatus === "PENDING") {
-      router.push("/worker/verification");
-    } else {
-      router.push("/worker/become-worker");
+      return;
     }
+
+    // already applied (any stage in progress)
+    if (
+      workerStatus === "PENDING" ||
+      workerStage === "BASIC_DETAILS_SUBMITTED" ||
+      workerStage === "DOCUMENTS_UPLOADED" ||
+      workerStage === "OCR_COMPLETED" ||
+      workerStage === "FACE_COMPLETED" ||
+      workerStage === "COMPLETED_AWAITING_REVIEW"
+    ) {
+      router.push("/worker/verification");
+      return;
+    }
+
+    // new user
+    router.push("/worker/become-worker");
   };
 
   return (
@@ -151,12 +176,37 @@ export default function CustomerDashboard() {
         </View>
       ))}
 
+      {workerStage !== "NONE" && (
+        <View style={styles.workerBanner}>
+          <Text style={styles.workerBannerTitle}>Verification Status</Text>
+
+          <Text style={styles.workerBannerText}>
+            {workerStage === "DOCUMENTS_UPLOADED" &&
+              "📄 Documents uploaded. OCR in progress..."}
+
+            {workerStage === "OCR_COMPLETED" &&
+              "✔ Aadhaar verified. Face verification pending..."}
+
+            {workerStage === "FACE_COMPLETED" &&
+              "✔ Face verification done. Awaiting admin review..."}
+
+            {workerStage === "COMPLETED_AWAITING_REVIEW" &&
+              "⏳ Under admin review..."}
+
+          </Text>
+        </View>
+      )}
+
       {/* WORKER CTA */}
       <TouchableOpacity style={styles.worker} onPress={handleWorker}>
         <Text style={styles.workerTitle}>
-          {isWorker || workerStatus === "APPROVED"
-            ? "👷 Open Worker Dashboard"
-            : "🚀 Become a Worker"}
+          <Text style={styles.workerTitle}>
+            {isWorker || workerStatus === "APPROVED"
+              ? "👷 Open Worker Dashboard"
+              : workerStage !== "NONE"
+                ? "⏳ Worker Application In Progress"
+                : "🚀 Become a Worker"}
+          </Text>
         </Text>
         <Text style={styles.workerSub}>Earn money by offering services</Text>
       </TouchableOpacity>
@@ -191,6 +241,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+  workerBanner: {
+    backgroundColor: SKY,
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+  },
+  
+  workerBannerTitle: {
+    color: NAVY,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  
+  workerBannerText: {
+    color: NAVY,
+    marginTop: 6,
+    fontSize: 14,
   },
 
   cta: {
