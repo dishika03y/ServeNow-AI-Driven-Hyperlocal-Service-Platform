@@ -21,6 +21,15 @@ def create_job_route(data: dict, user=Depends(get_current_user)):
 def get_all_jobs_route():
     return get_all_jobs()
 
+@router.post("/book")
+def create_job_route(data: dict, user=Depends(get_current_user)):
+
+    return create_job(
+        str(user["_id"]),
+        data.get("serviceId"),
+        data.get("location")  # [longitude, latitude]
+    )
+
 # GET MY JOBS
 
 @router.get("/me")

@@ -1,63 +1,74 @@
-# app/routes/auth.py
-from fastapi import APIRouter, HTTPException
-from app.schemas.auth_schemas import RegisterSchema, LoginSchema
-from app.services.auth_service import (create_user, authenticate_user)
-from app.core.security import (
-    create_access_token, 
-    create_refresh_token,
-    verify_refresh_token
+from fastapi import APIRouter, Depends, HTTPException, Query
+from bson import ObjectId
+from app.routes.user_routes import get_current_user
+from app.services.admin_service import (
+    get_workers_by_status,
+    get_worker_details,
+    approve_worker,
+    reject_worker,
+    get_admin_dashboard
 )
-from pydantic import BaseModel
-
-class RefreshRequest(BaseModel):
-    refresh_token: str
 
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+def get_admin_user(current_user=Depends(get_current_user)):
+    if current_user.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
 
 
-@router.post("/register")
-def register(user: RegisterSchema):
-    result = create_user(user)
-    if not result:
-        raise HTTPException(status_code=400, detail="User already exists")
-    return {"message": "User registered successfully"}
+router = APIRouter(
+    prefix="/admin",
+    tags=["Admin"]
+)
 
 
-@router.post("/login")
-def login(data: LoginSchema):
-    user = authenticate_user(data.phone, data.password)
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+# ✅ Dashboard
+@router.get("/dashboard")
+async def dashboard(admin=Depends(get_admin_user)):
+    return await get_admin_dashboard()
 
-    # Generate both tokens HERE (only once)
-    access_token = create_access_token(data={"sub": str(user["phone"]), "role": user.get("role", "USER")})
-    refresh_token = create_refresh_token(data={"sub": str(user["phone"])})
 
+# ✅ Get workers list (filter by status)
+@router.get("/workers")
+async def list_workers(
+    status: str = Query(None, description="pending/approved/rejected"),
+    admin=Depends(get_admin_user)
+):
+    workers = await get_workers_by_status(status)
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
+        "total": len(workers),
+        "data": workers
     }
 
 
-@router.post("/refresh")
-def refresh(data: RefreshRequest):
-    user_id = verify_refresh_token(data.refresh_token)
-    
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+# ✅ Get worker details
+@router.get("/workers/{worker_id}")
+async def worker_details(worker_id: str, admin=Depends(get_admin_user)):
+    worker = await get_worker_details(worker_id)
 
-    # Generate NEW access token using the phone number from refresh token
-    new_access_token = create_access_token(data={"sub": user_id})
-    
-    return {
-        "access_token": new_access_token,
-        "token_type": "bearer"
-    }
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    return worker
 
 
-@router.post("/logout", status_code=200)
-def logout():
-    return {"message": "Successfully logged out"}
+# ✅ Approve worker
+@router.patch("/workers/{worker_id}/approve")
+async def approve(worker_id: str, admin=Depends(get_admin_user)):
+    success = await approve_worker(worker_id)
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Unable to approve worker")
+
+    return {"message": "Worker approved successfully"}
+
+
+# ✅ Reject worker
+@router.patch("/workers/{worker_id}/reject")
+async def reject(worker_id: str, admin=Depends(get_admin_user)):
+    success = await reject_worker(worker_id)
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Unable to reject worker")
+
+    return {"message": "Worker rejected successfully"}
