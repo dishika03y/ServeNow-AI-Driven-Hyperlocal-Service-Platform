@@ -14,6 +14,8 @@ from app.services.face_service import compare_faces
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
 from bson import ObjectId
 from datetime import datetime
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import BackgroundTasks
 
