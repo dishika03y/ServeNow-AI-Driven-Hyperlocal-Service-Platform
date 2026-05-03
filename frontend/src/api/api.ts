@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
-const BASE_URL = "https://serservenow-backend.onrender.com";
+const BASE_URL = "https://servenow-ai-driven-hyperlocal-service.onrender.com";
 
 const API = axios.create({
   baseURL: BASE_URL,
@@ -147,7 +147,7 @@ const applyWorker = async (payload: any) => {
   try {
     const token = await AsyncStorage.getItem("token"); // if you store auth token
 
-    const res = await fetch("https://serservenow-backend.onrender.com/workers/apply", {
+    const res = await fetch("https://servenow-ai-driven-hyperlocal-service.onrender.com/workers/apply", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
