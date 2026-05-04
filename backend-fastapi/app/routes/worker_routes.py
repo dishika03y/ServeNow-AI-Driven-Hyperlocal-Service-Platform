@@ -20,7 +20,6 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import BackgroundTasks
 
 from app.schemas.workers_schemas import WorkerProfileResponse
-from app.services.worker_service import run_full_verification
 
 router = APIRouter(
     prefix="/workers",
