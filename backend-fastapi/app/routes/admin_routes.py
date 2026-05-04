@@ -69,12 +69,17 @@ async def approve(
     return {"message": "Worker approved successfully"}
 
 
-# ✅ Reject worker
 @router.patch("/workers/{worker_id}/reject")
-async def reject(worker_id: str, admin=Depends(get_admin_user)):
-    success = await reject_worker(worker_id)
+async def reject(
+    worker_id: str,
+    admin=Depends(get_admin_user)
+):
+    success = reject_worker(worker_id)
 
     if not success:
-        raise HTTPException(status_code=400, detail="Unable to reject worker")
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to reject worker"
+        )
 
     return {"message": "Worker rejected successfully"}
