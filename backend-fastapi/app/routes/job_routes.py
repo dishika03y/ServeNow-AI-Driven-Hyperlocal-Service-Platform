@@ -19,7 +19,7 @@ async def create_job_route(data: dict, user=Depends(get_current_user)):
         raise HTTPException(400, "serviceId and location required")
 
     return create_job(
-        str(user["_id"]),
+        str(user["id"]),
         data["serviceId"],
         data["location"]
     )
@@ -27,7 +27,7 @@ async def create_job_route(data: dict, user=Depends(get_current_user)):
 # ✅ GET MY JOBS
 @router.get("/me")
 async def get_my_jobs_route(user=Depends(get_current_user)):
-    return get_user_jobs(str(user["_id"]))
+    return get_user_jobs(str(user["id"]))
 
 
 # ✅ GET WORKER JOBS
