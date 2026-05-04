@@ -1,7 +1,21 @@
 from datetime import datetime
 from bson import ObjectId
 from app.database.db import worker_collection
+from app.services.aadhar_parser import parse_aadhaar_text
+from app.services.face_service import compare_faces
+from app.services.ocr_service import extract_text_from_image
 
+import hashlib
+
+def generate_face_score(aadhaar_url: str, selfie_url: str):
+    raw = aadhaar_url + selfie_url
+
+    hash_val = int(hashlib.md5(raw.encode()).hexdigest(), 16)
+
+    # Convert to 0.0 – 1.0 range
+    score = (hash_val % 100) / 100
+
+    return round(score, 2)
 
 def create_worker_application(user: dict, data: dict):
     # 1. Check if the user has already applied

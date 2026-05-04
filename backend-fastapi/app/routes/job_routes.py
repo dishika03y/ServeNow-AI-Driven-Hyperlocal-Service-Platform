@@ -18,38 +18,42 @@ async def create_job_route(data: dict, user=Depends(get_current_user)):
     if not data.get("serviceId") or not data.get("location"):
         raise HTTPException(400, "serviceId and location required")
 
-    return await create_job(
-        str(user["_id"]),
+    return create_job(
+        str(user["id"]),
         data["serviceId"],
         data["location"]
     )
 
-
 # ✅ GET MY JOBS
 @router.get("/me")
 async def get_my_jobs_route(user=Depends(get_current_user)):
-    return await get_user_jobs(str(user["_id"]))
+    return get_user_jobs(str(user["id"]))
 
 
 # ✅ GET WORKER JOBS
 @router.get("/worker/{worker_id}")
 async def get_worker_jobs_route(worker_id: str):
-    return await get_worker_jobs(worker_id)
+    return get_worker_jobs(worker_id)
 
 
 # ✅ UPDATE JOB STATUS
 @router.put("/{job_id}")
 async def update_status_route(job_id: str, status: str):
 
-    allowed_status = ["ASSIGNED", "ACCEPTED", "COMPLETED", "CANCELLED"]
+    allowed_status = [
+        "ASSIGNED",
+        "ACCEPTED",
+        "COMPLETED",
+        "CANCELLED"
+    ]
 
     if status not in allowed_status:
         raise HTTPException(400, "Invalid status")
 
-    return await update_job_status(job_id, status)
+    return update_job_status(job_id, status)
 
 
 # ✅ ADMIN (optional)
 @router.get("/")
 async def get_all_jobs_route():
-    return await get_all_jobs()
+    return get_all_jobs()

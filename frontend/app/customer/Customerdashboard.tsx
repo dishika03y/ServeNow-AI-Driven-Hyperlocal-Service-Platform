@@ -15,44 +15,57 @@ const WHITE = "#FFFFFF";
 const CREAM = "#F7F2EB";
 const MUTED = "rgba(8,31,92,0.5)";
 const SKY = "#BAD6EB";
-const GREEN = "#22A06B";
 
 export default function CustomerDashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [isWorker, setIsWorker] = useState<any>(false);
+
+  const [isWorker, setIsWorker] = useState(false);
   const [workerStatus, setWorkerStatus] = useState<
     "NONE" | "PENDING" | "APPROVED"
   >("NONE");
+
+  const [workerStage, setWorkerStage] = useState<
+    | "NONE"
+    | "BASIC_DETAILS_SUBMITTED"
+    | "DOCUMENTS_UPLOADED"
+    | "OCR_COMPLETED"
+    | "FACE_COMPLETED"
+    | "COMPLETED_AWAITING_REVIEW"
+  >("NONE");
+
+  const [isLive, setIsLive] = useState(false);
 
   const fetchData = async () => {
     try {
       const user = await apiRequest("/users/me", "GET");
 
-      // ⚠️ COMMENT THIS (API NOT READY)
-      // const bookingRes = await apiRequest("/users/me/bookings", "GET");
+      const bookingRes = await apiRequest("/bookings/me", "GET");
 
-      // TEMP DUMMY DATA
-      const bookingRes = {
-        data: [
-          { id: 1, service_type: "Plumbing", status: "completed" },
-          { id: 2, service_type: "Cleaning", status: "ongoing" },
-        ],
-      };
       setProfile(user);
-
-      setBookings(bookingRes.data || []);
+      setBookings(bookingRes?.data || bookingRes || []);
       setIsWorker(user?.is_worker);
-      const worker = await apiRequest("/workers/me", "GET");
+
+      let worker = null;
+
+      if (user?.is_worker) {
+        try {
+          worker = await apiRequest("/workers/me", "GET");
+        } catch (e) {
+          worker = null; // worker not yet created → ignore 404
+        }
+      }
+
       setWorkerStatus(worker?.status || "NONE");
+      setWorkerStage(worker?.verificationStage || "NONE");
+      setIsLive(worker?.isLive || false);
     } catch (e) {
-      console.log(e);
+      console.log("Dashboard Error:", e);
     } finally {
       setRefreshing(false);
     }
   };
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -62,16 +75,16 @@ export default function CustomerDashboard() {
     fetchData();
   }, []);
 
-  // ---------- DATA ----------
   const name =
     profile?.fullName || profile?.name || profile?.first_name || "User";
 
   const city = profile?.city || "Your location";
 
-  const initials = name
-    .split(" ")
-    .map((x: string) => x[0])
-    .join("");
+  const initials =
+    name
+      ?.split(" ")
+      .map((x: string) => x[0])
+      .join("") || "U";
 
   const total = bookings.length;
   const ongoing = bookings.filter((b) => b.status === "ongoing").length;
@@ -79,14 +92,42 @@ export default function CustomerDashboard() {
 
   const activeBooking = bookings.find((b) => b.status === "ongoing");
 
-  // ---------- HANDLERS ----------
   const handleWorker = () => {
-    if (isWorker === true || workerStatus === "APPROVED") {
+    // Case 1: approved
+    if (workerStatus === "APPROVED" || isLive) {
       router.push("/(worker-tabs)/dashboard");
-    } else if (workerStatus === "PENDING") {
+      return;
+    }
+
+    // Case 2: ANY verification started → ALWAYS go verification
+    if (
+      workerStatus === "PENDING" ||
+      workerStage === "BASIC_DETAILS_SUBMITTED" ||
+      workerStage === "DOCUMENTS_UPLOADED" ||
+      workerStage === "OCR_COMPLETED" ||
+      workerStage === "FACE_COMPLETED" ||
+      workerStage === "COMPLETED_AWAITING_REVIEW"
+    ) {
       router.push("/worker/verification");
-    } else {
-      router.push("/worker/become-worker");
+      return;
+    }
+
+    // Case 3: new user
+    router.push("/worker/become-worker");
+  };
+
+  const getWorkerBannerText = () => {
+    switch (workerStage) {
+      case "DOCUMENTS_UPLOADED":
+        return "📄 Documents uploaded. OCR in progress...";
+      case "OCR_COMPLETED":
+        return "✔ Aadhaar verified. Face verification pending...";
+      case "FACE_COMPLETED":
+        return "✔ Face verification done. Awaiting admin review...";
+      case "COMPLETED_AWAITING_REVIEW":
+        return "⏳ Under admin review...";
+      default:
+        return null;
     }
   };
 
@@ -105,7 +146,6 @@ export default function CustomerDashboard() {
           <Text style={styles.location}>📍 {city}</Text>
         </View>
 
-        {/* ✅ FIXED ROUTE */}
         <TouchableOpacity
           style={styles.avatar}
           onPress={() => router.push("/(tabs)/User-profile")}
@@ -113,14 +153,6 @@ export default function CustomerDashboard() {
           <Text style={{ color: WHITE }}>{initials}</Text>
         </TouchableOpacity>
       </View>
-
-      {/* PRIMARY CTA */}
-      <TouchableOpacity
-        style={styles.cta}
-        onPress={() => router.push("/(tabs)/All-Services")}
-      >
-        <Text style={styles.ctaText}>🛠️ Book a Service</Text>
-      </TouchableOpacity>
 
       {/* STATS */}
       <View style={styles.row}>
@@ -137,8 +169,15 @@ export default function CustomerDashboard() {
         >
           <Text style={styles.liveTitle}>🔴 Ongoing Service</Text>
           <Text style={styles.liveSub}>{activeBooking.service_type}</Text>
-          <Text style={styles.liveSub}>Track Now →</Text>
         </TouchableOpacity>
+      )}
+
+      {/* VERIFICATION BANNER */}
+      {workerStage !== "NONE" && (
+        <View style={styles.workerBanner}>
+          <Text style={styles.workerBannerTitle}>Verification Status</Text>
+          <Text style={styles.workerBannerText}>{getWorkerBannerText()}</Text>
+        </View>
       )}
 
       {/* RECENT */}
@@ -154,10 +193,13 @@ export default function CustomerDashboard() {
       {/* WORKER CTA */}
       <TouchableOpacity style={styles.worker} onPress={handleWorker}>
         <Text style={styles.workerTitle}>
-          {isWorker || workerStatus === "APPROVED"
+          {workerStatus === "APPROVED"
             ? "👷 Open Worker Dashboard"
-            : "🚀 Become a Worker"}
+            : workerStage !== "NONE"
+              ? "⏳ Application In Progress"
+              : "🚀 Become a Worker"}
         </Text>
+
         <Text style={styles.workerSub}>Earn money by offering services</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -180,6 +222,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+
   greeting: { color: MUTED },
   name: { fontSize: 26, fontWeight: "800", color: NAVY },
   location: { color: MUTED, marginTop: 4 },
@@ -191,20 +234,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-  },
-
-  cta: {
-    margin: 20,
-    backgroundColor: NAVY,
-    padding: 20,
-    borderRadius: 20,
-    alignItems: "center",
-  },
-
-  ctaText: {
-    color: WHITE,
-    fontWeight: "800",
-    fontSize: 16,
   },
 
   row: {
@@ -280,5 +309,22 @@ const styles = StyleSheet.create({
   workerSub: {
     color: MUTED,
     marginTop: 4,
+  },
+
+  workerBanner: {
+    backgroundColor: SKY,
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+  },
+
+  workerBannerTitle: {
+    color: NAVY,
+    fontWeight: "800",
+  },
+
+  workerBannerText: {
+    color: NAVY,
+    marginTop: 6,
   },
 });
