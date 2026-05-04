@@ -10,7 +10,7 @@ from app.services.job_service import create_job
 
 
 # ✅ CREATE BOOKING
-async def create_booking(user_id: str, data: dict):
+def create_booking(user_id: str, data: dict):
 
     booking = {
         "userId": ObjectId(user_id),
@@ -23,36 +23,33 @@ async def create_booking(user_id: str, data: dict):
         "updatedAt": datetime.utcnow(),
     }
 
-    # 🔥 STEP 1: CREATE BOOKING
     result = booking_model.insert_one(booking)
 
-    # 🔥 STEP 2: CREATE JOB (CONNECT ENGINE)
-    job = await create_job(
+    job = create_job(
         user_id,
         data["serviceId"],
         data["location"]
     )
 
-    # 🔥 STEP 3: LINK JOB → BOOKING
     booking_model.update_one(
         {"_id": result.inserted_id},
         {
             "$set": {
-                "jobId": job.get("id"),
+                "jobId": job.get("jobId"),
                 "status": "ASSIGNED"
             }
         }
     )
 
     booking["_id"] = result.inserted_id
-    booking["jobId"] = job.get("id")
+    booking["jobId"] = job.get("jobId")
     booking["status"] = "ASSIGNED"
 
     return booking_entity(booking)
 
 
 # ✅ GET USER BOOKINGS
-async def get_user_bookings(user_id: str):
+def get_user_bookings(user_id: str):
 
     bookings = booking_model.find({
         "userId": ObjectId(user_id)
@@ -62,20 +59,23 @@ async def get_user_bookings(user_id: str):
 
 
 # ✅ GET SINGLE BOOKING
-async def get_booking_by_id(booking_id: str):
+def get_booking_by_id(booking_id: str):
 
     booking = booking_model.find_one({
         "_id": ObjectId(booking_id)
     })
 
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Booking not found"
+        )
 
     return booking_entity(booking)
 
 
 # ✅ CANCEL BOOKING
-async def cancel_booking(booking_id: str, user_id: str):
+def cancel_booking(booking_id: str, user_id: str):
 
     booking = booking_model.find_one({
         "_id": ObjectId(booking_id),
@@ -83,10 +83,16 @@ async def cancel_booking(booking_id: str, user_id: str):
     })
 
     if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Booking not found"
+        )
 
     if booking["status"] in ["COMPLETED", "CANCELLED"]:
-        raise HTTPException(status_code=400, detail="Cannot cancel")
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot cancel"
+        )
 
     booking_model.update_one(
         {"_id": ObjectId(booking_id)},
@@ -101,8 +107,8 @@ async def cancel_booking(booking_id: str, user_id: str):
     return {"message": "Booking cancelled successfully"}
 
 
-# ✅ USER STATS (Dashboard)
-async def get_user_stats(user_id: str):
+# ✅ USER STATS
+def get_user_stats(user_id: str):
 
     total = booking_model.count_documents({
         "userId": ObjectId(user_id)
@@ -120,7 +126,14 @@ async def get_user_stats(user_id: str):
 
     active = booking_model.count_documents({
         "userId": ObjectId(user_id),
-        "status": {"$in": ["CREATED", "ASSIGNED", "ACCEPTED", "IN_PROGRESS"]}
+        "status": {
+            "$in": [
+                "CREATED",
+                "ASSIGNED",
+                "ACCEPTED",
+                "IN_PROGRESS"
+            ]
+        }
     })
 
     return {
