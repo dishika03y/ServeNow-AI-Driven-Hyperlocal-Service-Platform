@@ -27,6 +27,30 @@ router = APIRouter(
     redirect_slashes=False
 )
 
+@router.get("/me")
+def get_worker_profile(current_user=Depends(get_current_user)):
+
+    worker = worker_collection.find_one({
+        "$or": [
+            {"userId": current_user["_id"]},
+            {"userId": str(current_user["_id"])},
+            {"userId": ObjectId(current_user["_id"]) if ObjectId.is_valid(str(current_user["_id"])) else None}
+        ]
+    })
+
+    if not worker:
+        raise HTTPException(
+            status_code=404,
+            detail="Worker not found"
+        )
+
+    return {
+        "id": str(worker.get("_id")),
+        "status": worker.get("status", "NONE"),
+        "verificationStage": worker.get("verificationStage", "NONE"),
+        "isLive": worker.get("isLive", False)
+    }
+
 
 @router.post("/apply")
 def apply_as_worker(
@@ -197,6 +221,7 @@ def get_verification_status(current_user=Depends(get_current_user)):
         "aadhaarData": worker.get("aadhaarData", None),
         "status": worker.get("status")
     }
+
 
 thread_pool = ThreadPoolExecutor(max_workers=2)
 

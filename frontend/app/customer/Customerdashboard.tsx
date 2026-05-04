@@ -93,16 +93,26 @@ export default function CustomerDashboard() {
   const activeBooking = bookings.find((b) => b.status === "ongoing");
 
   const handleWorker = () => {
+    // Case 1: approved
     if (workerStatus === "APPROVED" || isLive) {
       router.push("/(worker-tabs)/dashboard");
       return;
     }
 
-    if (workerStatus === "PENDING" || workerStage !== "NONE") {
+    // Case 2: ANY verification started → ALWAYS go verification
+    if (
+      workerStatus === "PENDING" ||
+      workerStage === "BASIC_DETAILS_SUBMITTED" ||
+      workerStage === "DOCUMENTS_UPLOADED" ||
+      workerStage === "OCR_COMPLETED" ||
+      workerStage === "FACE_COMPLETED" ||
+      workerStage === "COMPLETED_AWAITING_REVIEW"
+    ) {
       router.push("/worker/verification");
       return;
     }
 
+    // Case 3: new user
     router.push("/worker/become-worker");
   };
 
