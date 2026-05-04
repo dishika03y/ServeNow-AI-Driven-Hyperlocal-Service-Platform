@@ -11,9 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path } from "react-native-svg";
-import { apiRequest } from "@/src/api/api";
 
 const NAVY = "#081F5C";
 const SKY = "#BAD6EB";
@@ -54,49 +52,15 @@ export default function ServiceDetail() {
   }, []);
 
   // -------------------------
-  // BOOK SERVICE API CALL
+  // FAKE BACKEND BOOKING
   // -------------------------
-  const bookService = async () => {
-    try {
-      setLoading(true);
-
-      const token = await AsyncStorage.getItem("access_token");
-
-      if (!token) {
-        Alert.alert("Error", "Login required");
-        return;
-      }
-
-      // ⚠️ TEMP FIX (you MUST replace this later with real service _id)
-      const serviceId = service; // still temporary, but backend will fail if not ObjectId
-
-      const payload = {
-        serviceId,
-        location: {
-          lat: 28.61,
-          lng: 77.2,
-        },
-        notes: `Need ${service} service`,
-      };
-
-      const data = await apiRequest("/bookings/", "POST", payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // IMPORTANT: apiRequest already returns JSON
-      console.log("BOOKING RESPONSE:", data);
-
-      Alert.alert("Booking Confirmed 🎉", "Your request has been created");
-
-      router.push("/customer/booking");
-    } catch (err: any) {
-      console.log("Booking error:", err);
-      Alert.alert("Error", err?.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
+  const bookService = () => {
+    router.push({
+      pathname: "/customer/finding-worker",
+      params: {
+        service: String(service),
+      },
+    });
   };
 
   return (

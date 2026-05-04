@@ -302,20 +302,25 @@ function SectionLabel({ title, badge }: { title: string; badge?: string }) {
 }
 
 // ── Trending Card ──────────────────────────────────────────────
-function TrendingCard({ service }: { service: (typeof SERVICES)[0] }) {
+function TrendingCard({ service }: { service: any }) {
   return (
     <TouchableOpacity
       style={styles.trendCard}
       onPress={() =>
         router.push({
           pathname: "/customer/service-detail",
-          params: { service: service.title },
+          params: {
+            serviceName: service.title,
+            serviceId: service.id, // ✅ FIXED
+          },
         })
       }
       activeOpacity={0.8}
     >
       <View style={styles.trendIconBox}>{SERVICE_ICONS[service.title]}</View>
+
       <Text style={styles.trendTitle}>{service.title}</Text>
+
       <View style={styles.trendTag}>
         <Text style={styles.trendTagText}>Top Rated</Text>
       </View>
@@ -324,21 +329,26 @@ function TrendingCard({ service }: { service: (typeof SERVICES)[0] }) {
 }
 
 // ── Service Card ───────────────────────────────────────────────
-function ServiceCard({ service }: { service: (typeof SERVICES)[0] }) {
+function ServiceCard({ service }: { service: any }) {
   return (
     <TouchableOpacity
       style={styles.serviceCard}
       onPress={() =>
         router.push({
           pathname: "/customer/service-detail",
-          params: { service: service.title },
+          params: {
+            serviceName: service.title,
+            serviceId: service.id, // ✅ FIXED
+          },
         })
       }
       activeOpacity={0.8}
     >
       <View style={styles.serviceIconBox}>{SERVICE_ICONS[service.title]}</View>
+
       <Text style={styles.serviceTitle}>{service.title}</Text>
       <Text style={styles.serviceSub}>{service.sub}</Text>
+
       {!!service.tag && (
         <View style={styles.serviceTag}>
           <Text style={styles.serviceTagText}>{service.tag}</Text>
@@ -347,83 +357,39 @@ function ServiceCard({ service }: { service: (typeof SERVICES)[0] }) {
     </TouchableOpacity>
   );
 }
-
 // ── Main Screen ────────────────────────────────────────────────
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [masterLoading, setMasterLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated] = useState(true); // ✅ always true (no backend auth)
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const token = await AsyncStorage.getItem("access_token");
-        if (!token) {
-          router.replace("/auth/login");
-          return;
-        }
-        setIsAuthenticated(true);
-        await loadCachedProfile();
-      } catch {
-        router.replace("/auth/login");
-      } finally {
-        setMasterLoading(false);
-      }
-    };
-    init();
+    loadProfile();
   }, []);
 
-  const fetchData = async () => {
+  const loadProfile = async () => {
     try {
       const data = await apiRequest("/users/me", "GET");
       setProfile(data);
-      await AsyncStorage.setItem("userProfile", JSON.stringify(data));
-    } catch (err: any) {
-      if (err.status === 401 || err.message?.includes("401")) {
-        await AsyncStorage.multiRemove(["access_token", "userProfile"]);
-        setIsAuthenticated(false);
-        router.replace("/auth/login");
-      }
-    } finally {
-      setRefreshing(false);
+    } catch (err) {
+      console.log("Mock API failed:", err);
     }
-  };
-
-  const loadCachedProfile = async () => {
-    try {
-      const cached = await AsyncStorage.getItem("userProfile");
-      if (cached) setProfile(JSON.parse(cached));
-      await fetchData();
-    } catch {}
   };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchData();
+    loadProfile().finally(() => setRefreshing(false));
   }, []);
 
-  // Filtered services
   const filtered = SERVICES.filter(
     (s) =>
       (selectedCat === "All" || s.cat === selectedCat) &&
       s.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-  const trending = SERVICES.filter((s) => s.trending);
 
-  // Loading state
-  // if (masterLoading) {
-  //   return (
-  //     <View style={styles.loadingScreen}>
-  //       <StatusBar barStyle="dark-content" backgroundColor={C.cream} />
-  //       <View style={styles.logoMark}><LogoMark /></View>
-  //       <ActivityIndicator size="small" color={C.navy} style={{ marginTop: 20 }} />
-  //       <Text style={styles.loadingText}>Synchronizing…</Text>
-  //     </View>
-  //   );
-  // }
+  const trending = SERVICES.filter((s) => s.trending);
 
   if (!isAuthenticated) return null;
 
@@ -443,10 +409,10 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.brandName}>ServeNow</Text>
         </View>
+
         <TouchableOpacity
           style={styles.avatarBtn}
           onPress={() => router.push("/customer/Customerdashboard")}
-          activeOpacity={0.8}
         >
           <Text style={styles.avatarText}>
             {getInitials(profile?.fullName)}
@@ -462,11 +428,10 @@ export default function HomeScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={C.navy}
-            colors={[C.navy]}
           />
         }
       >
-        {/* Location + Hero */}
+        {/* HERO */}
         <View style={styles.hero}>
           <View style={styles.locationRow}>
             <LocationIcon />
@@ -474,16 +439,18 @@ export default function HomeScreen() {
               {profile?.city || "Detecting location…"}
             </Text>
           </View>
+
           <Text style={styles.greeting}>
             Hello, {profile?.fullName?.split(" ")[0] || "there"}
           </Text>
+
           <Text style={styles.heroTitle}>
             Premium services,{"\n"}at your{" "}
             <Text style={styles.heroItalic}>doorstep.</Text>
           </Text>
         </View>
 
-        {/* Search */}
+        {/* SEARCH */}
         <View style={styles.searchBox}>
           <SearchIcon />
           <TextInput
@@ -492,11 +459,10 @@ export default function HomeScreen() {
             placeholderTextColor={C.navyMid}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            autoCapitalize="none"
           />
         </View>
 
-        {/* Category Pills */}
+        {/* CATEGORIES */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -511,7 +477,6 @@ export default function HomeScreen() {
                 selectedCat === cat && styles.catPillActive,
               ]}
               onPress={() => setSelectedCat(cat)}
-              activeOpacity={0.75}
             >
               <Text
                 style={[
@@ -525,10 +490,11 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Trending — shown only when no search and All selected */}
+        {/* TRENDING */}
         {!searchQuery && selectedCat === "All" && (
           <>
             <SectionLabel title="TRENDING NOW" badge="Hot" />
+
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -541,7 +507,7 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* Services Grid */}
+        {/* SERVICES */}
         <SectionLabel
           title={
             selectedCat === "All"
@@ -562,7 +528,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Trust strip */}
+        {/* TRUST STRIP */}
         <View style={styles.trust}>
           <Text style={styles.trustText}>✦ Verified providers</Text>
           <View style={styles.trustDot} />
@@ -571,11 +537,11 @@ export default function HomeScreen() {
           <Text style={styles.trustText}>1M+ users</Text>
         </View>
       </ScrollView>
+
       <FloatingSupport />
     </View>
   );
 }
-
 // ── Styles ─────────────────────────────────────────────────────
 const CARD_WIDTH = (width - 20 * 2 - 10) / 2;
 
