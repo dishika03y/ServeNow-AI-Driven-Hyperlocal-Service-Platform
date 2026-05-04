@@ -39,20 +39,38 @@ def create_booking(user_id: str, data: dict):
         user_location
     )
 
-    # ✅ UPDATE BOOKING WITH JOB
-    booking_model.update_one(
-        {"_id": result.inserted_id},
-        {
-            "$set": {
-                "jobId": job.get("jobId"),
-                "status": "ASSIGNED"
-            }
-        }
-    )
-
     booking["_id"] = result.inserted_id
-    booking["jobId"] = job.get("jobId")
-    booking["status"] = "ASSIGNED"
+
+    # ✅ IF WORKER FOUND
+    if job.get("jobId"):
+
+        booking_model.update_one(
+            {"_id": result.inserted_id},
+            {
+                "$set": {
+                    "jobId": job.get("jobId"),
+                    "status": "ASSIGNED"
+                }
+            }
+        )
+
+        booking["jobId"] = job.get("jobId")
+        booking["status"] = "ASSIGNED"
+
+    # ✅ IF NO WORKER FOUND
+    else:
+
+        booking_model.update_one(
+            {"_id": result.inserted_id},
+            {
+                "$set": {
+                    "status": "PENDING"
+                }
+            }
+        )
+
+        booking["jobId"] = None
+        booking["status"] = "PENDING"
 
     return booking_entity(booking)
 
