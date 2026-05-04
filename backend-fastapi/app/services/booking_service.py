@@ -23,14 +23,23 @@ def create_booking(user_id: str, data: dict):
         "updatedAt": datetime.utcnow(),
     }
 
+    # ✅ CREATE BOOKING
     result = booking_model.insert_one(booking)
 
+    # ✅ CONVERT LOCATION → GEOJSON COORDINATES
+    user_location = [
+        data["location"]["lng"],
+        data["location"]["lat"]
+    ]
+
+    # ✅ CREATE JOB
     job = create_job(
         user_id,
         data["serviceId"],
-        data["location"]
+        user_location
     )
 
+    # ✅ UPDATE BOOKING WITH JOB
     booking_model.update_one(
         {"_id": result.inserted_id},
         {
