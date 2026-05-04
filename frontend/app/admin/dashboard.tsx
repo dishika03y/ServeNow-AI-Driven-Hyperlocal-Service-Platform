@@ -6,9 +6,65 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+type DashboardStats = {
+  total_users: number;
+  total_workers: number;
+  pending_workers: number;
+  approved_workers: number;
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
+
+  const [stats, setStats] = useState<DashboardStats>({
+    total_users: 0,
+    total_workers: 0,
+    pending_workers: 0,
+    approved_workers: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboard = async () => {
+    try {
+      const token = await AsyncStorage.getItem("access_token");
+
+      const res = await fetch(
+        "https://servenow-ai-driven-hyperlocal-service.onrender.com/admin/dashboard",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      console.log("Dashboard:", data);
+
+      setStats(data);
+    } catch (error) {
+      console.log("Dashboard Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  // 🔄 Loading UI
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <Text>Loading Dashboard...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -20,9 +76,13 @@ export default function AdminDashboard() {
 
       {/* 📊 MAIN STATS */}
       <View style={styles.grid}>
-        <StatCard label="Total Users" value="1200" />
-        <StatCard label="Total Workers" value="320" />
-        <StatCard label="Pending Approvals" value="18" highlight />
+        <StatCard label="Total Users" value={stats.total_users} />
+        <StatCard label="Total Workers" value={stats.total_workers} />
+        <StatCard
+          label="Pending Approvals"
+          value={stats.pending_workers}
+          highlight
+        />
         <StatCard label="Today Bookings" value="45" />
       </View>
 
@@ -31,10 +91,10 @@ export default function AdminDashboard() {
 
       <TouchableOpacity
         style={styles.alertCard}
-        onPress={() => router.push("/admin/workers?tab=pending")}
+        onPress={() => router.push("/admin/workers")}
       >
         <Text style={styles.alertText}>
-          ⚠️ 18 Workers Pending Approval
+          ⚠️ {stats.pending_workers} Workers Pending Approval
         </Text>
         <Text style={styles.linkText}>Review Now →</Text>
       </TouchableOpacity>
@@ -113,6 +173,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F6FA",
+  },
+
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   title: {

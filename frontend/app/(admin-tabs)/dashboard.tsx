@@ -2,194 +2,247 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
+  RefreshControl,
+  Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function AdminDashboard() {
-  const router = useRouter();
+type Worker = {
+  worker_id: string;
+  fullName: string;
+  phone: string;
+  city: string;
+  status: string;
+};
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ padding: 16 }}
-    >
-      {/* 🔷 HEADER */}
-      <Text style={styles.title}>Admin Dashboard</Text>
+export default function WorkersScreen() {
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-      {/* 📊 MAIN STATS */}
-      <View style={styles.grid}>
-        <StatCard label="Total Users" value="1200" />
-        <StatCard label="Total Workers" value="320" />
-        <StatCard label="Pending Approvals" value="18" highlight />
-        <StatCard label="Today Bookings" value="45" />
-      </View>
+  // 🔥 FETCH WORKERS
+  const fetchWorkers = async () => {
+    try {
+      const token = await AsyncStorage.getItem("access_token");
 
-      {/* ⚡ URGENT ACTIONS */}
-      <Text style={styles.sectionTitle}>⚡ Urgent Actions</Text>
+      const res = await fetch(
+        "https://servenow-ai-driven-hyperlocal-service.onrender.com/admin/workers",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      <TouchableOpacity
-        style={styles.alertCard}
-        onPress={() => router.push("/admin/workers?tab=pending")}
-      >
-        <Text style={styles.alertText}>
-          ⚠️ 18 Workers Pending Approval
-        </Text>
-        <Text style={styles.linkText}>Review Now →</Text>
-      </TouchableOpacity>
+      const data = await res.json();
+      console.log("Workers:", data);
 
-      <TouchableOpacity style={styles.alertCard}>
-        <Text style={styles.alertText}>🚨 5 Workers Reported</Text>
-        <Text style={styles.linkText}>Check Reports →</Text>
-      </TouchableOpacity>
+      setWorkers(data?.data || []);
+    } catch (error) {
+      console.log("Workers Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      {/* 📈 TODAY PERFORMANCE */}
-      <Text style={styles.sectionTitle}>📈 Today Performance</Text>
+  useEffect(() => {
+    fetchWorkers();
+  }, []);
 
-      <View style={styles.grid}>
-        <StatCard label="Completed Jobs" value="30" />
-        <StatCard label="Cancelled Jobs" value="5" />
-        <StatCard label="Pending Jobs" value="10" />
-      </View>
+  // 🔄 REFRESH
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchWorkers();
+    setRefreshing(false);
+  };
 
-      {/* 💰 EARNINGS */}
-      <Text style={styles.sectionTitle}>💰 Earnings</Text>
+  // ✅ APPROVE
+  const approveWorker = (workerId: string) => {
+    Alert.alert("Approve Worker", "Are you sure?", [
+      { text: "Cancel" },
+      {
+        text: "Approve",
+        onPress: async () => {
+          try {
+            setActionLoading(workerId);
 
-      <View style={styles.grid}>
-        <StatCard label="Today Revenue" value="₹12.5K" />
-        <StatCard label="Total Earnings" value="₹2.3L" />
-      </View>
+            const token = await AsyncStorage.getItem("access_token");
 
-      {/* 🚨 SYSTEM ALERTS */}
-      <Text style={styles.sectionTitle}>🚨 System Alerts</Text>
+            await fetch(
+              `https://servenow-ai-driven-hyperlocal-service.onrender.com/admin/workers/${workerId}/approve`,
+              {
+                method: "PATCH",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
 
-      <View style={styles.activityCard}>
-        <Text style={styles.alertText}>⚠️ 3 Failed Payments</Text>
-      </View>
+            fetchWorkers();
+          } catch (error) {
+            console.log("Approve Error:", error);
+          } finally {
+            setActionLoading(null);
+          }
+        },
+      },
+    ]);
+  };
 
-      <View style={styles.activityCard}>
-        <Text style={styles.alertText}>
-          ⚠️ High Cancellation Rate
-        </Text>
-      </View>
+  // ❌ REJECT
+  const rejectWorker = (workerId: string) => {
+    Alert.alert("Reject Worker", "Are you sure?", [
+      { text: "Cancel" },
+      {
+        text: "Reject",
+        onPress: async () => {
+          try {
+            setActionLoading(workerId);
 
-      {/* 📋 RECENT ACTIVITY */}
-      <Text style={styles.sectionTitle}>📋 Recent Activity</Text>
+            const token = await AsyncStorage.getItem("access_token");
 
-      <View style={styles.activityCard}>
-        <Text style={styles.activityText}>
-          🟢 New worker registered
-        </Text>
-      </View>
+            await fetch(
+              `https://servenow-ai-driven-hyperlocal-service.onrender.com/admin/workers/${workerId}/reject`,
+              {
+                method: "PATCH",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
 
-      <View style={styles.activityCard}>
-        <Text style={styles.activityText}>
-          ✅ Worker approved
-        </Text>
-      </View>
+            fetchWorkers();
+          } catch (error) {
+            console.log("Reject Error:", error);
+          } finally {
+            setActionLoading(null);
+          }
+        },
+      },
+    ]);
+  };
 
-      <View style={styles.activityCard}>
-        <Text style={styles.activityText}>
-          ❌ Worker rejected
-        </Text>
-      </View>
-    </ScrollView>
+  // 🔥 FILTER PENDING ONLY
+  const pendingWorkers = workers.filter(
+    (w) =>
+      w.status === "PENDING" ||
+      w.status === "PENDING_FACE_VERIFICATION"
   );
-}
 
-/* 🔹 REUSABLE STAT CARD */
-function StatCard({ label, value, highlight = false }: any) {
+  // 🔄 LOADING UI
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <Text>Loading workers...</Text>
+      </View>
+    );
+  }
+
+  // ❗ EMPTY STATE
+  if (pendingWorkers.length === 0) {
+    return (
+      <View style={styles.loader}>
+        <Text>No pending workers 🎉</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.card, highlight && styles.highlightCard]}>
-      <Text style={styles.cardLabel}>{label}</Text>
-      <Text style={styles.cardNumber}>{value}</Text>
-    </View>
+    <FlatList
+      data={pendingWorkers}
+      keyExtractor={(item) => item.worker_id}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      contentContainerStyle={{ padding: 16 }}
+      renderItem={({ item }) => (
+        <View style={styles.card}>
+          <Text style={styles.name}>{item.fullName}</Text>
+          <Text style={styles.text}>📞 {item.phone}</Text>
+          <Text style={styles.text}>📍 {item.city}</Text>
+          <Text style={styles.status}>Status: {item.status}</Text>
+
+          {/* 🔥 BUTTONS */}
+          <View style={styles.btnRow}>
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: "green" }]}
+              disabled={actionLoading === item.worker_id}
+              onPress={() => approveWorker(item.worker_id)}
+            >
+              <Text style={styles.btnText}>
+                {actionLoading === item.worker_id ? "..." : "Approve"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: "red" }]}
+              disabled={actionLoading === item.worker_id}
+              onPress={() => rejectWorker(item.worker_id)}
+            >
+              <Text style={styles.btnText}>
+                {actionLoading === item.worker_id ? "..." : "Reject"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    />
   );
 }
 
 /* 🎨 STYLES */
 const styles = StyleSheet.create({
-  container: {
+  loader: {
     flex: 1,
-    backgroundColor: "#F5F6FA",
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 16,
-    color: "#1A1A1A",
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 20,
-    marginBottom: 10,
-    color: "#1A1A1A",
-  },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   card: {
-    width: "48%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    elevation: 3,
-  },
-
-  highlightCard: {
-    borderWidth: 1,
-    borderColor: "#FF4D4F",
-  },
-
-  cardLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-
-  cardNumber: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginTop: 6,
-    color: "#0A2A66",
-  },
-
-  alertCard: {
-    backgroundColor: "#FFECEC",
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 10,
-  },
-
-  alertText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#D32F2F",
-  },
-
-  linkText: {
-    marginTop: 4,
-    color: "#0A2A66",
-    fontWeight: "600",
-  },
-
-  activityCard: {
-    backgroundColor: "#FFFFFF",
-    padding: 14,
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 12,
+    elevation: 2,
   },
 
-  activityText: {
+  name: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 5,
+  },
+
+  text: {
     fontSize: 14,
-    color: "#444",
+    color: "#555",
+  },
+
+  status: {
+    marginTop: 5,
+    fontWeight: "600",
+    color: "#FF9800",
+  },
+
+  btnRow: {
+    flexDirection: "row",
+    marginTop: 10,
+  },
+
+  btn: {
+    padding: 10,
+    borderRadius: 6,
+    marginRight: 10,
+    minWidth: 90,
+    alignItems: "center",
+  },
+
+  btnText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });

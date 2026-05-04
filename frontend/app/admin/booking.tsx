@@ -4,255 +4,270 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  RefreshControl,
 } from "react-native";
-import React, { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
-import {
-  getAllBookings,
-  updateBookingStatus,
-} from "@/src/api/admin";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// 🔥 MORE DUMMY DATA
-const dummyBookings = [
-  { _id: "1", service: "Electrician", userName: "Rahul Sharma", workerName: "Ramesh", price: 500, status: "pending" },
-  { _id: "2", service: "Plumber", userName: "Amit Verma", workerName: "Suresh", price: 700, status: "confirmed" },
-  { _id: "3", service: "AC Repair", userName: "Priya Singh", workerName: "", price: 1200, status: "completed" },
-  { _id: "4", service: "Deep Cleaning", userName: "Neha", workerName: "Ravi", price: 2000, status: "cancelled" },
-  { _id: "5", service: "Carpenter", userName: "Vikas", workerName: "Mahesh", price: 900, status: "pending" },
-  { _id: "6", service: "Painter", userName: "Rohit", workerName: "", price: 1500, status: "pending" },
-  { _id: "7", service: "Cleaning", userName: "Simran", workerName: "Anil", price: 600, status: "completed" },
-  { _id: "8", service: "AC Installation", userName: "Karan", workerName: "Deepak", price: 1800, status: "confirmed" },
-  { _id: "9", service: "Fridge Repair", userName: "Pooja", workerName: "Sanjay", price: 800, status: "cancelled" },
-  { _id: "10", service: "Washing Machine Repair", userName: "Arjun", workerName: "", price: 1100, status: "pending" },
+type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "completed"
+  | "cancelled";
+
+type Booking = {
+  _id: string;
+  service: string;
+  userName: string;
+  workerName?: string;
+  price: number;
+  status: BookingStatus;
+};
+
+const TABS: { key: "all" | BookingStatus; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "confirmed", label: "Confirmed" },
+  { key: "completed", label: "Completed" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
-export default function Bookings() {
-  const router = useRouter();
+export default function BookingsScreen() {
+  const [data, setData] = useState<Booking[]>([]);
+  const [tab, setTab] = useState<"all" | BookingStatus>("all");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [data, setData] = useState<any[]>([]);
-  const [filter, setFilter] = useState("all");
+  // 🔥 GET BOOKINGS
+  const fetchBookings = async () => {
+    try {
+      const token = await AsyncStorage.getItem("access_token");
+
+      const res = await fetch(
+        "https://servenow-ai-driven-hyperlocal-service.onrender.com/admin/bookings",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const json = await res.json();
+      setData(json?.data || []);
+    } catch (e) {
+      console.log("Fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    load();
+    fetchBookings();
   }, []);
 
-  const load = async () => {
+  // 🔄 REFRESH
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchBookings();
+    setRefreshing(false);
+  };
+
+  // 🔥 UPDATE STATUS
+  const updateStatus = async (id: string, status: BookingStatus) => {
     try {
-      const res = await getAllBookings();
-      if (!res || res.length === 0) setData(dummyBookings);
-      else setData(res);
-    } catch {
-      setData(dummyBookings);
+      const token = await AsyncStorage.getItem("access_token");
+
+      await fetch(
+        `https://servenow-ai-driven-hyperlocal-service.onrender.com/admin/bookings/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      fetchBookings(); // refresh
+    } catch (e) {
+      console.log("Update error:", e);
     }
   };
 
-  const handleStatus = async (id: string, status: string) => {
-    try {
-      await updateBookingStatus(id, status);
-      load();
-    } catch {
-      console.log("status update failed");
-    }
-  };
-
+  // 🔎 FILTER
   const filtered =
-    filter === "all"
-      ? data
-      : data.filter((b) => b.status === filter);
+    tab === "all" ? data : data.filter((b) => b.status === tab);
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
+  const statusColor = (s: BookingStatus) => {
+    switch (s) {
       case "pending":
-        return { bg: "#FFF4E5", text: "#FF9800" };
+        return "#FF9800";
       case "confirmed":
-        return { bg: "#E3F2FD", text: "#2196F3" };
+        return "#2196F3";
       case "completed":
-        return { bg: "#E8F5E9", text: "#4CAF50" };
+        return "#4CAF50";
       case "cancelled":
-        return { bg: "#FFEBEE", text: "#F44336" };
+        return "#F44336";
       default:
-        return { bg: "#eee", text: "#555" };
+        return "#999";
     }
   };
+
+  // ⏳ LOADING
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <Text>Loading bookings...</Text>
+      </View>
+    );
+  }
+
+  // ❗ EMPTY
+  if (filtered.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Text>No bookings found</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Bookings</Text>
-      </View>
-
-      {/* FILTERS */}
-      <View style={styles.filters}>
-        {[
-          { key: "all", label: "All Bookings" },
-          { key: "pending", label: "Pending" },
-          { key: "confirmed", label: "Confirmed" },
-          { key: "completed", label: "Completed" },
-          { key: "cancelled", label: "Cancelled" },
-        ].map((f) => (
+      {/* 🔹 TABS */}
+      <View style={styles.tabs}>
+        {TABS.map((t) => (
           <TouchableOpacity
-            key={f.key}
-            onPress={() => setFilter(f.key)}
+            key={t.key}
             style={[
-              styles.filterBtn,
-              filter === f.key && styles.activeFilter,
+              styles.tabBtn,
+              tab === t.key && styles.activeTab,
             ]}
+            onPress={() => setTab(t.key)}
           >
             <Text
               style={[
-                styles.filterText,
-                filter === f.key && { color: "#fff" },
+                styles.tabText,
+                tab === t.key && { color: "#fff" },
               ]}
             >
-              {f.label}
+              {t.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* LIST */}
+      {/* 🔹 LIST */}
       <FlatList
         data={filtered}
-        keyExtractor={(item: any) => item._id}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }: any) => {
-          const statusStyle = getStatusStyle(item.status);
+        keyExtractor={(item) => item._id}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        contentContainerStyle={{ padding: 12 }}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.row}>
+              <Text style={styles.title}>🔧 {item.service}</Text>
+              <Text style={styles.price}>₹{item.price}</Text>
+            </View>
 
-          return (
-            <TouchableOpacity
-              onPress={() =>
-                router.push(`/admin/booking/${item._id}`)
-              }
+            <Text>👤 {item.userName}</Text>
+            <Text style={styles.sub}>
+              🧑‍🔧 {item.workerName || "Not Assigned"}
+            </Text>
+
+            <Text
+              style={[
+                styles.status,
+                { color: statusColor(item.status) },
+              ]}
             >
-              <View style={styles.card}>
-                {/* TOP */}
-                <View style={styles.row}>
-                  <Text style={styles.service}>
-                    🔧 {item.service}
-                  </Text>
-                  <Text style={styles.price}>
-                    ₹{item.price}
-                  </Text>
-                </View>
+              {item.status.toUpperCase()}
+            </Text>
 
-                {/* USER */}
-                <Text style={styles.text}>
-                  👤 {item.userName}
-                </Text>
-                <Text style={styles.subText}>
-                  🧑‍🔧 {item.workerName || "Not Assigned"}
-                </Text>
-
-                {/* STATUS */}
-                <View
-                  style={[
-                    styles.statusChip,
-                    { backgroundColor: statusStyle.bg },
-                  ]}
+            {/* 🔥 ACTIONS */}
+            {item.status === "pending" && (
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.green}
+                  onPress={() =>
+                    updateStatus(item._id, "confirmed")
+                  }
                 >
-                  <Text
-                    style={{
-                      color: statusStyle.text,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {item.status.toUpperCase()}
-                  </Text>
-                </View>
+                  <Text style={styles.btnText}>Approve</Text>
+                </TouchableOpacity>
 
-                {/* ACTIONS */}
-                {item.status === "pending" && (
-                  <View style={styles.actions}>
-                    <TouchableOpacity
-                      style={styles.approve}
-                      onPress={() =>
-                        handleStatus(item._id, "confirmed")
-                      }
-                    >
-                      <Text style={styles.btnText}>Approve</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.cancel}
-                      onPress={() =>
-                        handleStatus(item._id, "cancelled")
-                      }
-                    >
-                      <Text style={styles.btnText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {item.status === "confirmed" && (
-                  <TouchableOpacity
-                    style={styles.complete}
-                    onPress={() =>
-                      handleStatus(item._id, "completed")
-                    }
-                  >
-                    <Text style={styles.btnText}>
-                      Mark Completed
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={styles.red}
+                  onPress={() =>
+                    updateStatus(item._id, "cancelled")
+                  }
+                >
+                  <Text style={styles.btnText}>Cancel</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          );
-        }}
+            )}
+
+            {item.status === "confirmed" && (
+              <TouchableOpacity
+                style={styles.blue}
+                onPress={() =>
+                  updateStatus(item._id, "completed")
+                }
+              >
+                <Text style={styles.btnText}>
+                  Mark Completed
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       />
     </View>
   );
 }
 
+/* 🎨 STYLES */
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: "#F5F6FA" },
+
+  center: {
     flex: 1,
-    backgroundColor: "#F6F7FB",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
-  header: {
-    backgroundColor: "#0B2239",
-    padding: 16,
-  },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-
-  filters: {
+  tabs: {
     flexDirection: "row",
     flexWrap: "wrap",
-    padding: 12,
+    padding: 10,
   },
 
-  filterBtn: {
+  tabBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: "#EAEAEA",
+    backgroundColor: "#ddd",
     borderRadius: 20,
     marginRight: 8,
     marginBottom: 6,
   },
 
-  activeFilter: {
+  activeTab: {
     backgroundColor: "#0B2239",
   },
 
-  filterText: {
+  tabText: {
     fontSize: 12,
     color: "#333",
   },
 
   card: {
     backgroundColor: "#fff",
-    marginHorizontal: 12,
-    marginBottom: 12,
     padding: 14,
-    borderRadius: 16,
-    elevation: 3,
+    borderRadius: 14,
+    marginBottom: 10,
+    elevation: 2,
   },
 
   row: {
@@ -260,32 +275,23 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  service: {
-    fontSize: 16,
+  title: {
     fontWeight: "600",
   },
 
   price: {
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#0B2239",
   },
 
-  text: {
-    marginTop: 4,
-    fontSize: 14,
-  },
-
-  subText: {
-    fontSize: 12,
+  sub: {
     color: "#777",
+    fontSize: 12,
   },
 
-  statusChip: {
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: "flex-start",
+  status: {
+    marginTop: 6,
+    fontWeight: "600",
   },
 
   actions: {
@@ -293,20 +299,20 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  approve: {
+  green: {
     backgroundColor: "#00C853",
     padding: 10,
     borderRadius: 8,
     marginRight: 8,
   },
 
-  cancel: {
-    backgroundColor: "#FF3B3B",
+  red: {
+    backgroundColor: "#F44336",
     padding: 10,
     borderRadius: 8,
   },
 
-  complete: {
+  blue: {
     backgroundColor: "#2196F3",
     padding: 10,
     borderRadius: 8,
@@ -318,5 +324,3 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 });
-
-
