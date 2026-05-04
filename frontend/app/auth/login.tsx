@@ -249,23 +249,10 @@ export default function LoginScreen() {
             Authorization: `Bearer ${token}`,
           },
         });
-<<<<<<< Updated upstream
         await AsyncStorage.setItem("user_role", userData.role);
 
         // ✅ DIRECT DECISION
         handleUserRouting(userData);
-=======
-        console.log("USER DATA:", userData);
-
-        // ✅ DIRECT DECISION
-        if (userData?.is_worker) {
-          router.replace("/(worker-tabs)/dashboard");
-        } else if (userData?.role?.trim() === "ADMIN") {
-          router.replace("/admin/dashboard");
-        } else {
-          router.replace("/(tabs)/home");
-        }
->>>>>>> Stashed changes
       } else {
         setError("Login failed");
       }
