@@ -136,7 +136,7 @@ def reject_worker(worker_id: str):
         {"$set": {"is_worker": False}}
     )
 
-    return result.modified_count > 0
+    return result.modified_count > 0    
 # ---------------------------
 # DASHBOARD
 # ---------------------------
