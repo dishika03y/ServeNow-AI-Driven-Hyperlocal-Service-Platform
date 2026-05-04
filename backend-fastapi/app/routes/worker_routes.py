@@ -222,67 +222,91 @@ async def verify_all(current_user=Depends(get_current_user)):
             {"_id": 1, "documents": 1}
         )
 
-        # ✅ SAFE CHECK (NO CRASH)
+        # ✅ Worker must exist
         if not worker:
             raise HTTPException(
                 status_code=404,
                 detail="Worker profile not found. Please complete apply step first."
             )
 
+        documents = worker.get("documents")
 
-        loop = asyncio.get_running_loop()
+        # ✅ Documents check
+        if not documents:
+            raise HTTPException(
+                status_code=400,
+                detail="Documents not uploaded"
+            )
 
-        # MOCK FACE (as you already did)
+        if not all(k in documents for k in ["aadhaarFront", "aadhaarBack", "selfieImage"]):
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required documents"
+            )
+
+        # ---------------------------
+        # 🔹 DUMMY OCR RESULT (replace later with real OCR)
+        # ---------------------------
+        aadhaar_data = {
+            "name": "Dummy Name",
+            "dob": "01-01-2000",
+            "aadhaarNumber": "123456789012"
+        }
+
+        # ---------------------------
+        # 🔹 DUMMY FACE MATCH (replace later with real ML service)
+        # ---------------------------
         face_result = {
             "score": 0.7,
             "matched": True
         }
 
-        num = str(123456789012) # Extracted from OCR
-        is_valid = len(num) == 12 and num.isdigit()
-        face_score = {"score": 0.7}["score"] if face_result else 0
+        face_score = face_result["score"]
+        aadhaar_number = aadhaar_data["aadhaarNumber"]
 
-        if is_valid and face_score >= 0.8:
-            status = "HIGH_CONFIDENCE_MATCH"
+        # ---------------------------
+        # 🔹 VALIDATION LOGIC
+        # ---------------------------
+        is_valid_aadhaar = len(aadhaar_number) == 12 and aadhaar_number.isdigit()
+
+        if is_valid_aadhaar and face_score >= 0.8:
+            internal_status = "HIGH_CONFIDENCE_MATCH"
             final_status = "APPROVED"
-        elif is_valid and face_score >= 0.5:
-            status = "MANUAL_CHECK_REQUIRED"
+
+        elif is_valid_aadhaar and face_score >= 0.5:
+            internal_status = "MANUAL_CHECK_REQUIRED"
             final_status = "PENDING_REVIEW"
+
         else:
-            status = "POTENTIAL_FRAUD_FLAG"
+            internal_status = "POTENTIAL_FRAUD_FLAG"
             final_status = "REJECTED"
 
+        # ---------------------------
+        # 🔹 DB UPDATE (FIXED TYPES)
+        # ---------------------------
         worker_collection.update_one(
             {"_id": worker["_id"]},
             {
                 "$set": {
-                    "aadhaarData": {
-                        "name": "Dummy", # You can extract this from OCR if needed
-                        "dob": "Dummy", # You can extract this from OCR if needed
-                        "aadhaarNumber": 123456789012 # Extracted from OCR
-                    },
-                    "faceMatch": {face_score, True}, # Mock result, replace with actual function call
-                    "internalVerificationScore": status,
+                    "aadhaarData": aadhaar_data,
+                    "faceMatch": face_result,
+                    "internalVerificationScore": internal_status,
                     "status": final_status,
                     "verificationStage": "COMPLETED_AWAITING_REVIEW"
                 }
             }
         )
 
+        # ---------------------------
+        # 🔹 RESPONSE (FRONTEND FRIENDLY)
+        # ---------------------------
         return {
             "success": True,
             "message": "Verification completed",
             "status": final_status,
-            "internal_status": status,
-            "aadhaar": {
-                "name": "Dummy",
-                "dob": "Dummy",
-                "aadhaarNumber": 123456789012
-            },
-            "face": {
-                "score": face_score,
-                "matched": True
-            }
+            "internal_status": internal_status,
+            "aadhaar": aadhaar_data,
+            "face": face_result
         }
 
     except HTTPException as he:
