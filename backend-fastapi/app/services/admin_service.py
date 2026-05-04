@@ -86,13 +86,13 @@ async def get_worker_details(worker_id: str):
 # ---------------------------
 # APPROVE WORKER
 # ---------------------------
-async def approve_worker(worker_id: str):
+def approve_worker(worker_id: str):
 
-    worker = await worker_collection.find_one({"_id": ObjectId(worker_id)})
+    worker = worker_collection.find_one({"_id": ObjectId(worker_id)})
     if not worker:
         return False
 
-    await worker_collection.update_one(
+    result = worker_collection.update_one(
         {"_id": ObjectId(worker_id)},
         {
             "$set": {
@@ -103,25 +103,24 @@ async def approve_worker(worker_id: str):
         }
     )
 
-    # FIX: correct userId mapping (NOT worker_id)
-    await user_collection.update_one(
+    user_collection.update_one(
         {"_id": ObjectId(worker["userId"])},
         {"$set": {"is_worker": True}}
     )
 
-    return True
+    return result.modified_count > 0
 
 
 # ---------------------------
 # REJECT WORKER
 # ---------------------------
-async def reject_worker(worker_id: str):
+def reject_worker(worker_id: str):
 
-    worker = await worker_collection.find_one({"_id": ObjectId(worker_id)})
+    worker = worker_collection.find_one({"_id": ObjectId(worker_id)})
     if not worker:
         return False
 
-    await worker_collection.update_one(
+    result = worker_collection.update_one(
         {"_id": ObjectId(worker_id)},
         {
             "$set": {
@@ -132,14 +131,12 @@ async def reject_worker(worker_id: str):
         }
     )
 
-    await user_collection.update_one(
+    user_collection.update_one(
         {"_id": ObjectId(worker["userId"])},
         {"$set": {"is_worker": False}}
     )
 
-    return True
-
-
+    return result.modified_count > 0
 # ---------------------------
 # DASHBOARD
 # ---------------------------

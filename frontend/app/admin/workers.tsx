@@ -55,9 +55,6 @@ export default function WorkersScreen() {
     fetchWorkers();
   }, []);
 
-  // -------------------------
-  // APPROVE WORKER
-  // -------------------------
   const approveWorker = async (id: string) => {
     try {
       setActionLoading(id);
@@ -73,10 +70,14 @@ export default function WorkersScreen() {
 
       const data = await res.json();
 
-      Alert.alert("Approved", data.message);
+      if (res.ok) {
+        Alert.alert("Approved", data.message);
 
-      // refresh list
-      fetchWorkers();
+        // ✅ REMOVE FROM UI IMMEDIATELY
+        setWorkers((prev) => prev.filter((worker) => worker.worker_id !== id));
+      } else {
+        Alert.alert("Error", data.detail || "Failed to approve");
+      }
     } catch (err) {
       console.log("Approve error:", err);
       Alert.alert("Error", "Failed to approve worker");

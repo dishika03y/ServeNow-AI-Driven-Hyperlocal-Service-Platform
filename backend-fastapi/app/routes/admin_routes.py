@@ -64,14 +64,3 @@ async def approve(worker_id: str, admin=Depends(get_admin_user)):
 
     return {"message": "Worker approved successfully"}
 
-
-# ✅ Approve worker
-@router.patch("/workers/{worker_id}/approve")
-async def approve(worker_id: str, admin=Depends(get_admin_user)):
-
-    success = await approve_worker(worker_id)   # ✅ FIXED
-
-    if not success:
-        raise HTTPException(status_code=400, detail="Unable to approve worker")
-
-    return {"message": "Worker approved successfully"}
