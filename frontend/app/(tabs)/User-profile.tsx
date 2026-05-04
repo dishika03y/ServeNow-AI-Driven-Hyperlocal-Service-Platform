@@ -34,8 +34,15 @@ export default function UserProfileScreen() {
 
   const fetchData = async () => {
     try {
+<<<<<<< Updated upstream
       const res = await apiRequest("/users/profile", "GET");
       const user = res.data;
+=======
+      const [user] = await Promise.all([
+        apiRequest("/users/me", "GET"),
+      ]);
+
+>>>>>>> Stashed changes
       setProfile(user);
       setIsWorker(user?.is_worker);
 
