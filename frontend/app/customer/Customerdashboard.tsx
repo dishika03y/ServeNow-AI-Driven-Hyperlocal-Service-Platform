@@ -39,28 +39,33 @@ export default function CustomerDashboard() {
 
   const fetchData = async () => {
     try {
-      const [user, bookingRes, worker] = await Promise.all([
-        apiRequest("/users/me", "GET"),
-        apiRequest("/users/me/bookings", "GET"),
-        apiRequest("/workers/me", "GET"),
-      ]);
+      const user = await apiRequest("/users/me", "GET");
+
+      const bookingRes = await apiRequest("/bookings/me", "GET");
 
       setProfile(user);
-
-      setBookings(bookingRes?.data || []);
-
+      setBookings(bookingRes?.data || bookingRes || []);
       setIsWorker(user?.is_worker);
+
+      let worker = null;
+
+      if (user?.is_worker) {
+        try {
+          worker = await apiRequest("/workers/me", "GET");
+        } catch (e) {
+          worker = null; // worker not yet created → ignore 404
+        }
+      }
 
       setWorkerStatus(worker?.status || "NONE");
       setWorkerStage(worker?.verificationStage || "NONE");
       setIsLive(worker?.isLive || false);
     } catch (e) {
-      console.log(e);
+      console.log("Dashboard Error:", e);
     } finally {
       setRefreshing(false);
     }
   };
-
   useEffect(() => {
     fetchData();
   }, []);
