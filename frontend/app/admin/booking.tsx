@@ -9,11 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-type BookingStatus =
-  | "pending"
-  | "confirmed"
-  | "completed"
-  | "cancelled";
+type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 type Booking = {
   _id: string;
@@ -21,7 +17,7 @@ type Booking = {
   userName: string;
   workerName?: string;
   price: number;
-  status: BookingStatus;
+  status: string; // keep string to avoid backend mismatch crashes
 };
 
 const TABS: { key: "all" | BookingStatus; label: string }[] = [
@@ -38,7 +34,11 @@ export default function BookingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // 🔥 GET BOOKINGS
+  // 🔥 NORMALIZE STATUS
+  const normalizeStatus = (status: string): BookingStatus =>
+    status?.toLowerCase() as BookingStatus;
+
+  // 🔥 FETCH BOOKINGS
   const fetchBookings = async () => {
     try {
       const token = await AsyncStorage.getItem("access_token");
@@ -49,13 +49,18 @@ export default function BookingsScreen() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const json = await res.json();
-      setData(json?.data || []);
+      console.log("BOOKINGS API:", json);
+
+      const list = Array.isArray(json) ? json : json?.data || [];
+
+      setData(list);
     } catch (e) {
       console.log("Fetch error:", e);
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -86,21 +91,23 @@ export default function BookingsScreen() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ status }),
-        }
+        },
       );
 
-      fetchBookings(); // refresh
+      fetchBookings();
     } catch (e) {
       console.log("Update error:", e);
     }
   };
 
-  // 🔎 FILTER
+  // 🔎 FILTER (FIXED)
   const filtered =
-    tab === "all" ? data : data.filter((b) => b.status === tab);
+    tab === "all"
+      ? data
+      : data.filter((b) => normalizeStatus(b.status) === tab);
 
-  const statusColor = (s: BookingStatus) => {
-    switch (s) {
+  const statusColor = (s: string) => {
+    switch (normalizeStatus(s)) {
       case "pending":
         return "#FF9800";
       case "confirmed":
@@ -123,15 +130,6 @@ export default function BookingsScreen() {
     );
   }
 
-  // ❗ EMPTY
-  if (filtered.length === 0) {
-    return (
-      <View style={styles.center}>
-        <Text>No bookings found</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       {/* 🔹 TABS */}
@@ -139,18 +137,10 @@ export default function BookingsScreen() {
         {TABS.map((t) => (
           <TouchableOpacity
             key={t.key}
-            style={[
-              styles.tabBtn,
-              tab === t.key && styles.activeTab,
-            ]}
+            style={[styles.tabBtn, tab === t.key && styles.activeTab]}
             onPress={() => setTab(t.key)}
           >
-            <Text
-              style={[
-                styles.tabText,
-                tab === t.key && { color: "#fff" },
-              ]}
-            >
+            <Text style={[styles.tabText, tab === t.key && { color: "#fff" }]}>
               {t.label}
             </Text>
           </TouchableOpacity>
@@ -160,11 +150,16 @@ export default function BookingsScreen() {
       {/* 🔹 LIST */}
       <FlatList
         data={filtered}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => item._id || index.toString()}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         contentContainerStyle={{ padding: 12 }}
+        ListEmptyComponent={
+          <View style={styles.center}>
+            <Text>No bookings found</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.row}>
@@ -177,48 +172,35 @@ export default function BookingsScreen() {
               🧑‍🔧 {item.workerName || "Not Assigned"}
             </Text>
 
-            <Text
-              style={[
-                styles.status,
-                { color: statusColor(item.status) },
-              ]}
-            >
-              {item.status.toUpperCase()}
+            <Text style={[styles.status, { color: statusColor(item.status) }]}>
+              {normalizeStatus(item.status).toUpperCase()}
             </Text>
 
             {/* 🔥 ACTIONS */}
-            {item.status === "pending" && (
+            {normalizeStatus(item.status) === "pending" && (
               <View style={styles.actions}>
                 <TouchableOpacity
                   style={styles.green}
-                  onPress={() =>
-                    updateStatus(item._id, "confirmed")
-                  }
+                  onPress={() => updateStatus(item._id, "confirmed")}
                 >
                   <Text style={styles.btnText}>Approve</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.red}
-                  onPress={() =>
-                    updateStatus(item._id, "cancelled")
-                  }
+                  onPress={() => updateStatus(item._id, "cancelled")}
                 >
                   <Text style={styles.btnText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {item.status === "confirmed" && (
+            {normalizeStatus(item.status) === "confirmed" && (
               <TouchableOpacity
                 style={styles.blue}
-                onPress={() =>
-                  updateStatus(item._id, "completed")
-                }
+                onPress={() => updateStatus(item._id, "completed")}
               >
-                <Text style={styles.btnText}>
-                  Mark Completed
-                </Text>
+                <Text style={styles.btnText}>Mark Completed</Text>
               </TouchableOpacity>
             )}
           </View>

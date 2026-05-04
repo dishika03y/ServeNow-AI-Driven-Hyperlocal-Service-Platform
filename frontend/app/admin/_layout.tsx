@@ -1,10 +1,15 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function Layout() {
+export default function AdminLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
-      
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: "#0A2A66",
+      }}
+    >
+      {/* 📊 Dashboard */}
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -15,6 +20,18 @@ export default function Layout() {
         }}
       />
 
+      {/* 👷 Workers (Pending Approval) */}
+      <Tabs.Screen
+        name="workers"
+        options={{
+          title: "Workers",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* 📦 Bookings */}
       <Tabs.Screen
         name="bookings"
         options={{
@@ -25,7 +42,16 @@ export default function Layout() {
         }}
       />
 
-     
+      {/* ⚙️ Settings */}
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

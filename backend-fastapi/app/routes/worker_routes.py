@@ -275,7 +275,7 @@ async def verify_all(current_user=Depends(get_current_user)):
 
         elif is_valid_aadhaar and face_score >= 0.5:
             internal_status = "MANUAL_CHECK_REQUIRED"
-            final_status = "PENDING_REVIEW"
+            final_status = "PENDING"
 
         else:
             internal_status = "POTENTIAL_FRAUD_FLAG"

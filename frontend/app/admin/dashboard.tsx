@@ -39,7 +39,7 @@ export default function AdminDashboard() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const data = await res.json();
@@ -96,12 +96,19 @@ export default function AdminDashboard() {
         <Text style={styles.alertText}>
           ⚠️ {stats.pending_workers} Workers Pending Approval
         </Text>
-        <Text style={styles.linkText}>Review Now →</Text>
+        <Text
+          style={styles.linkText}
+          onPress={() => router.push("/admin/workers")}
+        >
+          Review Now →
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.alertCard}>
         <Text style={styles.alertText}>🚨 5 Workers Reported</Text>
-        <Text style={styles.linkText}>Check Reports →</Text>
+        <Text style={styles.linkText} onPress={() => router.push("/admin/reports")}>
+          Check Reports →
+        </Text>
       </TouchableOpacity>
 
       {/* 📈 TODAY PERFORMANCE */}
@@ -129,30 +136,22 @@ export default function AdminDashboard() {
       </View>
 
       <View style={styles.activityCard}>
-        <Text style={styles.alertText}>
-          ⚠️ High Cancellation Rate
-        </Text>
+        <Text style={styles.alertText}>⚠️ High Cancellation Rate</Text>
       </View>
 
       {/* 📋 RECENT ACTIVITY */}
       <Text style={styles.sectionTitle}>📋 Recent Activity</Text>
 
       <View style={styles.activityCard}>
-        <Text style={styles.activityText}>
-          🟢 New worker registered
-        </Text>
+        <Text style={styles.activityText}>🟢 New worker registered</Text>
       </View>
 
       <View style={styles.activityCard}>
-        <Text style={styles.activityText}>
-          ✅ Worker approved
-        </Text>
+        <Text style={styles.activityText}>✅ Worker approved</Text>
       </View>
 
       <View style={styles.activityCard}>
-        <Text style={styles.activityText}>
-          ❌ Worker rejected
-        </Text>
+        <Text style={styles.activityText}>❌ Worker rejected</Text>
       </View>
     </ScrollView>
   );

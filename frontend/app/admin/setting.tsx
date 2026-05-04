@@ -8,9 +8,32 @@ import {
 import React from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiRequest } from "@/src/api/api";
 
 export default function Settings() {
   const router = useRouter();
+
+  // 🔥 LOGOUT FUNCTION
+  const handleLogout = async () => {
+    try {
+      const token = await AsyncStorage.getItem("access_token");
+
+      await apiRequest("/auth/logout", "POST", {
+        headers: { Authorization: `Bearer ${token}` },
+      }); // Using our api helper for consistency
+
+      // 🧹 Clear local storage (THIS IS THE REAL LOGOUT)
+      await AsyncStorage.removeItem("access_token");
+      await AsyncStorage.removeItem("refresh_token");
+      await AsyncStorage.removeItem("user");
+
+      // 🚪 Redirect to login
+      router.replace("auth/login");
+    } catch (error) {
+      console.log("Logout error:", error);
+    }
+  };
 
   const Item = ({ icon, title, onPress }: any) => (
     <TouchableOpacity style={styles.item} onPress={onPress}>
@@ -58,7 +81,7 @@ export default function Settings() {
       </View>
 
       {/* LOGOUT */}
-      <TouchableOpacity style={styles.logout}>
+      <TouchableOpacity style={styles.logout} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={20} color="#fff" />
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
