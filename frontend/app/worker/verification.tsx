@@ -421,7 +421,7 @@ export default function VerificationScreen() {
       }
 
       Alert.alert("Success", "Verification completed!");
-      router.push("/worker/pending-status");
+      router.push("/(worker-tabs)/dashboard");
     } catch (err) {
       console.log("HANDLE SUBMIT ERROR:", err);
       Alert.alert("Error", "Something went wrong");
