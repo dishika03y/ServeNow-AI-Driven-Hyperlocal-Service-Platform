@@ -1,0 +1,320 @@
+
+from app.schemas.workers_schemas import WorkerApplySchema
+from app.services.worker_service import create_worker_application
+from app.routes.user_routes import get_current_user
+
+from app.services.upload_service import upload_to_cloudinary
+from app.database.db import worker_collection
+from app.services.worker_service import update_worker_documents
+
+from app.services.ocr_service import extract_text_from_image
+from app.services.aadhar_parser import parse_aadhaar_text
+
+from app.services.face_service import compare_faces
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File
+from bson import ObjectId
+from datetime import datetime
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+from fastapi import BackgroundTasks
+
+from app.schemas.workers_schemas import WorkerProfileResponse
+
+router = APIRouter(
+    prefix="/workers",
+    tags=["Workers"],
+    redirect_slashes=False
+)
+
+@router.get("/me")
+def get_worker_profile(current_user=Depends(get_current_user)):
+
+    worker = worker_collection.find_one({
+        "$or": [
+            {"userId": current_user["_id"]},
+            {"userId": str(current_user["_id"])},
+            {"userId": ObjectId(current_user["_id"]) if ObjectId.is_valid(str(current_user["_id"])) else None}
+        ]
+    })
+
+    if not worker:
+        raise HTTPException(
+            status_code=404,
+            detail="Worker not found"
+        )
+
+    return {
+        "id": str(worker.get("_id")),
+        "status": worker.get("status", "NONE"),
+        "verificationStage": worker.get("verificationStage", "NONE"),
+        "isLive": worker.get("isLive", False)
+    }
+
+
+@router.post("/apply")
+def apply_as_worker(
+    data: WorkerApplySchema, 
+    current_user=Depends(get_current_user)
+):
+    if current_user["role"] != "USER":
+        raise HTTPException(status_code=403, detail="Already a worker or admin")
+
+    # 1. Convert Pydantic model to Dict
+    worker_data = data.model_dump()
+
+    # 2. Format for MongoDB Geo-Spatial indexing
+    # We remove the flat lat/long and create the Point object
+    worker_data["location"] = {
+        "type": "Point",
+        "coordinates": [data.longitude, data.latitude] # Longitude first for MongoDB
+    }
+    
+    # 3. Add internal tracking fields
+    worker_data["status"] = "PENDING"
+    worker_data["verificationStage"] = "BASIC_DETAILS_SUBMITTED"
+    worker_data["isLive"] = False
+    worker_data["createdAt"] = datetime.now()
+
+    # 4. Save to Database
+    result = create_worker_application(current_user, worker_data)
+    
+    if not result:
+        raise HTTPException(status_code=400, detail="Application already exists")
+
+    return {
+        "message": "Profile created successfully. Next step: Upload Documents.", 
+        "status": "PENDING"
+    }
+@router.post("/upload-documents")
+def upload_documents(
+    aadhaar_front: UploadFile = File(...),
+    aadhaar_back: UploadFile = File(...),
+    selfie: UploadFile = File(...),
+    portfolio_1: UploadFile = File(None), # Optional work photos
+    portfolio_2: UploadFile = File(None),
+    current_user=Depends(get_current_user)
+):
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1
+    })
+    if not worker:
+        raise HTTPException(404, "Application not found")
+
+    # Upload core IDs
+    docs = {
+        "aadhaarFront": upload_to_cloudinary(aadhaar_front, "workers/id"),
+        "aadhaarBack": upload_to_cloudinary(aadhaar_back, "workers/id"),
+        "selfieImage": upload_to_cloudinary(selfie, "workers/selfie"),
+        "portfolio": []
+    }
+
+    # Upload Portfolio images if provided
+    for p in [portfolio_1, portfolio_2]:
+        if p:
+            url = upload_to_cloudinary(p, "workers/portfolio")
+            docs["portfolio"].append(url)
+
+    worker_collection.update_one(
+        {"_id": worker["_id"]},
+        {"$set": {"documents": docs, "verificationStage": "DOCUMENTS_UPLOADED"}}
+    )
+
+    return {"message": "Documents and Portfolio uploaded successfully"}
+
+@router.post("/verify-aadhaar")
+def verify_aadhaar(current_user=Depends(get_current_user)):
+
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "documents": 1
+    })
+
+    if not worker or "documents" not in worker:
+        raise HTTPException(status_code=400, detail="Documents not uploaded")
+
+    # FINAL MERGE LOGIC
+    final_data = {
+        "name": "Dummy", # You can extract this from OCR if needed
+        "dob": "Dummy", # You can extract this from OCR if needed
+        "aadhaarNumber": 123456789012 # Extracted from OCR
+    }
+
+    worker_collection.update_one(
+        {"_id": worker["_id"]},
+        {
+            "$set": {
+                "aadhaarData": final_data,
+                "verificationStage": "OCR_COMPLETED"
+            }
+        }
+    )
+
+    return {
+        "message": "Aadhaar verified",
+        "data": final_data
+    }
+
+def run_face_verification(aadhaar_url, selfie_url, worker_id):
+
+
+    worker_collection.update_one(
+        {"_id": worker_id},
+        {
+            "$set": {
+                "faceMatch": {0.7, True}, # Mock result, replace with actual function call
+                "verificationStage": "FACE_COMPLETED"
+            }
+        }
+    )
+
+@router.post("/verify-face")
+def verify_face(background_tasks: BackgroundTasks, current_user=Depends(get_current_user)):
+    # 1. Find the worker in DB
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "documents": 1
+    })
+
+    if not worker or "documents" not in worker:
+        raise HTTPException(status_code=400, detail="Documents not uploaded")
+
+    # 2. Get the URLs
+    aadhaar_url = worker["documents"]["aadhaarFront"]
+    selfie_url = worker["documents"]["selfieImage"]
+
+    try:
+        print("Starting Face Match... please wait...")
+        background_tasks.add_task(run_face_verification, aadhaar_url, selfie_url, worker["_id"])
+        return {"message": "Processing in background"}
+
+    except Exception as e:
+        print(f"Face Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+    
+@router.get("/status")
+def get_verification_status(current_user=Depends(get_current_user)):
+    worker = worker_collection.find_one({"userId": current_user["_id"]},{
+        "_id": 1,
+        "verificationStage": 1,
+        "faceMatch": 1,
+        "aadhaarData": 1,
+        "status": 1
+    })
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker application not found")
+    
+    return {
+        "stage": worker.get("verificationStage", "NOT_STARTED"),
+        "faceMatch": worker.get("faceMatch", None),
+        "aadhaarData": worker.get("aadhaarData", None),
+        "status": worker.get("status")
+    }
+
+
+thread_pool = ThreadPoolExecutor(max_workers=2)
+
+@router.post("/verify-all")
+async def verify_all(current_user=Depends(get_current_user)):
+    try:
+        worker = worker_collection.find_one(
+            {"userId": current_user["_id"]},
+            {"_id": 1, "documents": 1}
+        )
+
+        # ✅ Worker must exist
+        if not worker:
+            raise HTTPException(
+                status_code=404,
+                detail="Worker profile not found. Please complete apply step first."
+            )
+
+        documents = worker.get("documents")
+
+        # ✅ Documents check
+        if not documents:
+            raise HTTPException(
+                status_code=400,
+                detail="Documents not uploaded"
+            )
+
+        if not all(k in documents for k in ["aadhaarFront", "aadhaarBack", "selfieImage"]):
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required documents"
+            )
+
+        # ---------------------------
+        # 🔹 DUMMY OCR RESULT (replace later with real OCR)
+        # ---------------------------
+        aadhaar_data = {
+            "name": "Dummy Name",
+            "dob": "01-01-2000",
+            "aadhaarNumber": "123456789012"
+        }
+
+        # ---------------------------
+        # 🔹 DUMMY FACE MATCH (replace later with real ML service)
+        # ---------------------------
+        face_result = {
+            "score": 0.7,
+            "matched": True
+        }
+
+        face_score = face_result["score"]
+        aadhaar_number = aadhaar_data["aadhaarNumber"]
+
+        # ---------------------------
+        # 🔹 VALIDATION LOGIC
+        # ---------------------------
+        is_valid_aadhaar = len(aadhaar_number) == 12 and aadhaar_number.isdigit()
+
+        if is_valid_aadhaar and face_score >= 0.8:
+            internal_status = "HIGH_CONFIDENCE_MATCH"
+            final_status = "APPROVED"
+
+        elif is_valid_aadhaar and face_score >= 0.5:
+            internal_status = "MANUAL_CHECK_REQUIRED"
+            final_status = "PENDING"
+
+        else:
+            internal_status = "POTENTIAL_FRAUD_FLAG"
+            final_status = "REJECTED"
+
+        # ---------------------------
+        # 🔹 DB UPDATE (FIXED TYPES)
+        # ---------------------------
+        worker_collection.update_one(
+            {"_id": worker["_id"]},
+            {
+                "$set": {
+                    "aadhaarData": aadhaar_data,
+                    "faceMatch": face_result,
+                    "internalVerificationScore": internal_status,
+                    "status": final_status,
+                    "verificationStage": "COMPLETED_AWAITING_REVIEW"
+                }
+            }
+        )
+
+        # ---------------------------
+        # 🔹 RESPONSE (FRONTEND FRIENDLY)
+        # ---------------------------
+        return {
+            "success": True,
+            "message": "Verification completed",
+            "status": final_status,
+            "internal_status": internal_status,
+            "aadhaar": aadhaar_data,
+            "face": face_result
+        }
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        print("VERIFY-ALL ERROR:", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Internal verification error"
+        )

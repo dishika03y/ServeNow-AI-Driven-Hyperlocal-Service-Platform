@@ -1,69 +1,172 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { apiRequest } from "@/src/api/api";
 
-interface Booking {
-  id: string;
-  service: string;
-  date: string;
-  status: string;
-}
+// COLORS (same as your profile screen)
+const CREAM = "#F7F2EB";
+const NAVY = "#081F5C";
+const WHITE = "#FFFFFF";
+const MUTED = "rgba(8,31,92,0.45)";
+const BORDER = "rgba(8,31,92,0.08)";
+const SUCCESS = "#2E7D32";
 
-const historyData: Booking[] = [
-  { id: '1', service: 'Home Cleaning', date: '02 Feb 2026', status: 'Completed' },
-  { id: '2', service: 'Plumbing', date: '25 Jan 2026', status: 'Cancelled' },
-  { id: '3', service: 'Electrician', date: '15 Jan 2026', status: 'Completed' },
+// 🧪 fallback static data
+const STATIC_HISTORY = [
+  {
+    id: 1,
+    service: "House Cleaning",
+    worker: "Ravi Kumar",
+    date: "12 May 2026",
+    status: "Completed",
+    price: "₹499",
+  },
+  {
+    id: 2,
+    service: "Electric Repair",
+    worker: "Amit Singh",
+    date: "10 May 2026",
+    status: "Completed",
+    price: "₹299",
+  },
+  {
+    id: 3,
+    service: "Plumbing",
+    worker: "Suresh Yadav",
+    date: "08 May 2026",
+    status: "Completed",
+    price: "₹399",
+  },
 ];
 
-const HistoryScreen: React.FC = () => {
-  const router = useRouter();
+export default function CustomerHistoryScreen() {
+  const [history, setHistory] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await apiRequest("/customer/history", "GET");
+
+      // adjust based on your backend response shape
+      setHistory(res.data || []);
+    } catch (error) {
+      console.log("History API failed, using static data");
+
+      // fallback
+      setHistory(STATIC_HISTORY);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchHistory();
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Booking History</Text>
-      <FlatList
-        data={historyData}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() =>
-              router.push({
-                pathname: '/booking-detail',
-                params: {
-                  bookingId: item.id,
-                  serviceName: item.service,
-                  providerName: 'John Doe',
-                  date: item.date,
-                  time: '10:00 AM',
-                  address: '123 Main Street',
-                  price: '₹500',
-                  status: item.status,
-                },
-              })
-            }
-          >
-            <Text style={styles.service}>{item.service}</Text>
-            <Text style={styles.date}>{item.date}</Text>
-            <Text style={[styles.status, item.status === 'Completed' ? styles.completed : styles.cancelled]}>
-              {item.status}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <Text style={styles.title}>My Booking History</Text>
+
+      {history.map((item) => (
+        <HistoryCard key={item.id} item={item} />
+      ))}
+    </ScrollView>
+  );
+}
+
+function HistoryCard({ item }: any) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.row}>
+        <Text style={styles.service}>{item.service}</Text>
+        <Text style={styles.price}>{item.price}</Text>
+      </View>
+
+      <Text style={styles.worker}>👨‍🔧 {item.worker}</Text>
+
+      <View style={styles.row}>
+        <Text style={styles.date}>{item.date}</Text>
+
+        <Text style={styles.status}>● {item.status}</Text>
+      </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#F8FAFC' },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
-  item: { padding: 16, backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 12 },
-  service: { fontSize: 18, fontWeight: '600' },
-  date: { fontSize: 14, color: '#64748B' },
-  status: { fontSize: 14, fontWeight: '600', marginTop: 4 },
-  completed: { color: 'green' },
-  cancelled: { color: 'red' },
-});
+  container: {
+    flex: 1,
+    backgroundColor: CREAM,
+    paddingTop: 60,
+  },
 
-export default HistoryScreen;
+  title: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: NAVY,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+
+  card: {
+    backgroundColor: WHITE,
+    marginHorizontal: 20,
+    marginBottom: 14,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  service: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: NAVY,
+  },
+
+  price: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: NAVY,
+  },
+
+  worker: {
+    marginTop: 6,
+    color: MUTED,
+  },
+
+  date: {
+    marginTop: 10,
+    fontSize: 12,
+    color: MUTED,
+  },
+
+  status: {
+    marginTop: 10,
+    fontSize: 12,
+    color: SUCCESS,
+    fontWeight: "600",
+  },
+});

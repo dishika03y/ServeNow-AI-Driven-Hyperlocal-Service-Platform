@@ -1,12 +1,46 @@
 from fastapi import FastAPI
 from app.routes.auth_routes import router as auth_router
 from app.routes.user_routes import router as user_router
+from app.routes.worker_routes import router as worker_router
+from app.routes.admin_routes import router as admin_router
 
-app = FastAPI(title="Blue Collar Platform API")
+from fastapi.middleware.cors import CORSMiddleware
+from app.database.db import init_db
+
+
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from app.routes.service_routes import router as service_router
+from app.routes.job_routes import router as job_router
+from app.routes.booking_routes import router as booking_router
+
+
+app = FastAPI(title="Blue Collar Platform API", redirect_slashes=False)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(worker_router)
+app.include_router(admin_router)
+app.include_router(booking_router)
 
+app.include_router(service_router, prefix="/services", tags=["Services"])
+app.include_router(job_router, prefix="/jobs", tags=["Jobs"])
+
+@app.on_event("startup")
+def startup_db():
+    init_db()
 
 @app.get("/")
 def root():
